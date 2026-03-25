@@ -1,76 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import logo from '../assets/logo.png'; // 로고 이미지 불러오기
-
-// --- 디자인 (CSS-in-JS) ---
-// 1. 전체 배경 (연한 회색)
-const backgroundStyle = {
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  height: '100vh',
-  backgroundColor: '#f9f9f9',
-  fontFamily: "'Noto Sans KR', sans-serif",
-  opacity: 1,
-  transition: 'opacity 0.5s ease-in', // 로그인 화면 나타날 때 페이드 인
-};
-
-// 2. 스플래시 전용 스타일 (페이드 아웃 효과 추가)
-const splashStyle = {
-  position: 'absolute', // 로그인 화면 위에 띄움
-  top: 0,
-  left: 0,
-  display: 'flex',
-  flexDirection: 'column',
-  justifyContent: 'center',
-  alignItems: 'center',
-  height: '100vh',
-  width: '100%',
-  backgroundColor: '#fff',
-  zIndex: 10, // 가장 위에 오도록
-  transition: 'opacity 0.8s ease-out', // 은은하게 사라지는 핵심 속성
-};
-
-// 3. 중앙 하얀색 로그인 박스
-const loginBoxStyle = {
-  backgroundColor: 'white',
-  padding: '60px 50px',
-  borderRadius: '15px',
-  boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
-  width: '100%',
-  maxWidth: '400px',
-  textAlign: 'center',
-};
-
-// --- 나머지 스타일은 동일 (생략 가능하나 가독성을 위해 유지) ---
-const titleStyle = { fontSize: '24px', fontWeight: 'bold', letterSpacing: '2px', marginBottom: '50px', color: '#333' };
-const formGroupStyle = { textAlign: 'left', marginBottom: '20px' };
-const labelStyle = { display: 'block', fontSize: '14px', color: '#666', marginBottom: '8px', fontWeight: '500' };
-const inputStyle = { width: '100%', padding: '15px', fontSize: '16px', borderRadius: '8px', border: '1px solid #ddd', boxSizing: 'border-box', outline: 'none' };
-const autoLoginStyle = { display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '8px', marginBottom: '30px', fontSize: '14px', color: '#7７7' };
-const buttonStyle = { width: '100%', padding: '18px', backgroundColor: '#FFF9C4', color:'#333', border: 'none', borderRadius: '8px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer' };
-const footerLinkStyle = { marginTop: '25px', fontSize: '13px', color: '#888', lineHeight: '1.6' };
+import logo from '../assets/logo.png';
 
 function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  
-  // --- 스플래시 상태 관리 (업그레이드) ---
-  const [showSplash, setShowSplash] = useState(true); // 스플래시 존재 여부
-  const [isFading, setIsFading] = useState(false);   // 페이드 아웃 애니메이션 중인지 여부
   const navigate = useNavigate();
 
-  // --- 스플래시 은은하게 사라지는 로직 ---
-  useEffect(() => {
-    // 1단계: 로고를 보여주는 시간 (1.5초)
-    const showTimer = setTimeout(() => {
-      setIsFading(true); // 1.5초 후 페이드 아웃 애니메이션 시작
-    }, 800);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [autoLogin, setAutoLogin] = useState(false);
 
-    // 2단계: 애니메이션이 지속되는 시간 (0.8초) 후 최종 제거
+  const [showSplash, setShowSplash] = useState(true);
+  const [isFading, setIsFading] = useState(false);
+
+  useEffect(() => {
+    const showTimer = setTimeout(() => {
+      setIsFading(true);
+    }, 1100);
+
     const fadeTimer = setTimeout(() => {
-      setShowSplash(false); // 애니메이션이 끝난 후 스플래시 화면 완전히 제거
-    }, 800 + 800); // 1.5초(보여줌) + 0.8초(애니메이션)
+      setShowSplash(false);
+    }, 2300);
 
     return () => {
       clearTimeout(showTimer);
@@ -78,77 +27,417 @@ function LoginPage() {
     };
   }, []);
 
-  const handleLogin = (e) => {
-    e.preventDefault();
-    if (email && password) {
-      alert(`환영합니다!`);
-      navigate('/main');
-    } else {
+  const handleLogin = () => {
+    if (!email || !password) {
       alert('이메일과 비밀번호를 입력해주세요.');
+      return;
     }
+
+    navigate('/main');
   };
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100vh' }}>
-      {/* 1단계: 로고 화면 (스플래시) */}
+    <div style={pageStyle}>
+      <div style={backgroundGlowTop} />
+      <div style={backgroundGlowBottom} />
+
       {showSplash && (
-        <div style={{ ...splashStyle, opacity: isFading ? 0 : 1 }}>
-          <img src={logo} alt="GLOBEE 로고" style={{ width: '180px', marginBottom: '20px' }} />
-          <h2 style={{ color: '#333', fontWeight: 'bold' }}>GLOBEE</h2>
+        <div
+          style={{
+            ...splashStyle,
+            opacity: isFading ? 0 : 1,
+          }}
+        >
+          <div style={splashLogoWrapperStyle}>
+            <img src={logo} alt="Globee 로고" style={splashLogoStyle} />
+          </div>
+          <h1 style={splashTitleStyle}>GLOBEE</h1>
+          <p style={splashSubtitleStyle}>
+            외국인 학생과 지역 학생을 연결하는 문화 플랫폼
+          </p>
         </div>
       )}
 
-      {/* 2단계: 로그인 화면 (스플래시가 사라질 때쯤 자연스럽게 나타남) */}
-      <div style={{ ...backgroundStyle, opacity: showSplash ? 0 : 1 }}>
-        <div style={loginBoxStyle}>
-          <h1 style={titleStyle}>LOGIN</h1>
-          
-          <form onSubmit={handleLogin}>
-            <div style={formGroupStyle}>
+      <div style={contentWrapStyle}>
+        <section style={heroSectionStyle}>
+          <div style={logoWrapperStyle}>
+            <img src={logo} alt="Globee 로고" style={logoStyle} />
+          </div>
+
+          <div style={badgeStyle}>GLOBEE</div>
+
+          <h1 style={titleStyle}>
+            외국인 학생과
+            <br />
+            지역 학생을 연결하는
+            <br />
+            문화 플랫폼
+          </h1>
+
+          <p style={descriptionStyle}>
+            대학의 빈 강의실과 외국인 학생의 문화 콘텐츠를 연결해,
+            <br />
+            누구나 캠퍼스에서 새로운 문화를 배우고 경험할 수 있도록 돕습니다.
+          </p>
+
+          <div style={featureListStyle}>
+            <div style={featureItemStyle}>🌍 캠퍼스 기반 문화교류</div>
+            <div style={featureItemStyle}>🏫 유휴공간 활용 클래스</div>
+            <div style={featureItemStyle}>🤝 외국인 학생 · 지역 학생 연결</div>
+          </div>
+        </section>
+
+        <section style={loginAreaStyle}>
+          <div style={loginCardStyle}>
+            <div style={loginHeaderStyle}>
+              <h2 style={loginTitleStyle}>시작하기</h2>
+              <p style={loginSubTextStyle}>
+                GLOBEE에 로그인하고 문화교류를 시작해보세요
+              </p>
+            </div>
+
+            <div style={inputGroupStyle}>
               <label style={labelStyle}>이메일</label>
-              <input 
-                type="email" 
-                placeholder="이메일을 입력하세요" 
+              <input
+                type="email"
+                placeholder="이메일을 입력하세요"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 style={inputStyle}
-                required
               />
             </div>
 
-            <div style={formGroupStyle}>
+            <div style={inputGroupStyle}>
               <label style={labelStyle}>비밀번호</label>
-              <input 
-                type="password" 
-                placeholder="비밀번호를 입력하세요" 
+              <input
+                type="password"
+                placeholder="비밀번호를 입력하세요"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 style={inputStyle}
-                required
               />
             </div>
 
-            <div style={autoLoginStyle}>
-              <input type="checkbox" id="autoLogin" style={{cursor: 'pointer'}} />
-              <label htmlFor="autoLogin" style={{cursor: 'pointer'}}>자동 로그인</label>
+            <label style={checkboxRowStyle}>
+              <input
+                type="checkbox"
+                checked={autoLogin}
+                onChange={(e) => setAutoLogin(e.target.checked)}
+                style={checkboxStyle}
+              />
+              자동 로그인
+            </label>
+
+            <button onClick={handleLogin} style={loginButtonStyle}>
+              로그인
+            </button>
+
+            <button onClick={() => navigate('/main')} style={guestButtonStyle}>
+              둘러보기
+            </button>
+
+            <div style={bottomTextWrapStyle}>
+              <p style={bottomTextStyle}>아직 가입하지 않으셨나요?</p>
+              <p style={signupTextStyle}>이메일로 회원가입하기</p>
             </div>
-
-            <button type="submit" style={buttonStyle}>로그인</button>
-          </form>
-
-          <div style={footerLinkStyle}>
-            <span style={{cursor: 'pointer'}}>비밀번호 찾기</span><br />
-            <span style={{marginTop: '10px', display: 'inline-block'}}>
-              아직 가입하지 않으셨나요? 
-              <span style={{color: '#333', cursor: 'pointer', fontWeight: 'bold', marginLeft: '5px'}}>
-                이메일로 회원가입하기
-              </span>
-            </span>
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );
 }
 
 export default LoginPage;
+
+/* ---------------- styles ---------------- */
+
+const pageStyle = {
+  position: 'relative',
+  width: '100%',
+  minHeight: '100vh',
+  overflow: 'hidden',
+  background: 'linear-gradient(180deg, #FFFDF2 0%, #FFFDF5 100%)',
+  fontFamily:
+    '"Pretendard", "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+};
+
+const backgroundGlowTop = {
+  position: 'absolute',
+  top: '-180px',
+  left: '-180px',
+  width: '420px',
+  height: '420px',
+  borderRadius: '50%',
+  background: 'rgba(255, 249, 196, 0.85)',
+  filter: 'blur(70px)',
+  pointerEvents: 'none',
+};
+
+const backgroundGlowBottom = {
+  position: 'absolute',
+  right: '-160px',
+  bottom: '-180px',
+  width: '420px',
+  height: '420px',
+  borderRadius: '50%',
+  background: 'rgba(255, 249, 196, 0.65)',
+  filter: 'blur(80px)',
+  pointerEvents: 'none',
+};
+
+const contentWrapStyle = {
+  position: 'relative',
+  zIndex: 1,
+  maxWidth: '1280px',
+  minHeight: '100vh',
+  margin: '0 auto',
+  padding: '48px 56px',
+  display: 'grid',
+  gridTemplateColumns: '1.1fr 0.9fr',
+  alignItems: 'center',
+  gap: '56px',
+};
+
+const heroSectionStyle = {
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'center',
+};
+
+const logoWrapperStyle = {
+  width: '108px',
+  height: '108px',
+  borderRadius: '28px',
+  backgroundColor: '#FFF9C4',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  boxShadow: '0 18px 40px rgba(0, 0, 0, 0.08)',
+  marginBottom: '24px',
+};
+
+const logoStyle = {
+  width: '78px',
+  height: '78px',
+  objectFit: 'contain',
+};
+
+const badgeStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 'fit-content',
+  padding: '10px 16px',
+  borderRadius: '999px',
+  backgroundColor: '#FFF3A6',
+  color: '#152238',
+  fontSize: '14px',
+  fontWeight: '800',
+  marginBottom: '22px',
+};
+
+const titleStyle = {
+  margin: 0,
+  fontSize: '68px',
+  lineHeight: '1.08',
+  letterSpacing: '-0.04em',
+  fontWeight: 900,
+  color: '#17233A',
+};
+
+const descriptionStyle = {
+  marginTop: '26px',
+  marginBottom: '32px',
+  fontSize: '17px',
+  lineHeight: '1.75',
+  color: '#667085',
+};
+
+const featureListStyle = {
+  display: 'flex',
+  gap: '12px',
+  flexWrap: 'wrap',
+};
+
+const featureItemStyle = {
+  backgroundColor: '#FFFFFF',
+  border: '1px solid #F0F0F0',
+  borderRadius: '18px',
+  padding: '14px 18px',
+  boxShadow: '0 10px 24px rgba(0, 0, 0, 0.05)',
+  fontSize: '14px',
+  fontWeight: '700',
+  color: '#22304A',
+};
+
+const loginAreaStyle = {
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+};
+
+const loginCardStyle = {
+  width: '100%',
+  maxWidth: '500px',
+  minHeight: '680px',
+  backgroundColor: '#FFFFFF',
+  borderRadius: '32px',
+  padding: '68px 34px 40px',
+  boxShadow: '0 24px 60px rgba(0, 0, 0, 0.08)',
+  border: '1px solid rgba(0, 0, 0, 0.04)',
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'flex-start',
+};
+
+const loginHeaderStyle = {
+  marginBottom: '34px',
+};
+
+const loginTitleStyle = {
+  margin: 0,
+  fontSize: '34px',
+  lineHeight: '1.2',
+  fontWeight: 900,
+  color: '#17233A',
+};
+
+const loginSubTextStyle = {
+  marginTop: '10px',
+  marginBottom: 0,
+  fontSize: '15px',
+  lineHeight: '1.6',
+  color: '#6B7280',
+};
+
+const inputGroupStyle = {
+  display: 'flex',
+  flexDirection: 'column',
+  marginBottom: '18px',
+};
+
+const labelStyle = {
+  marginBottom: '8px',
+  fontSize: '14px',
+  fontWeight: '800',
+  color: '#273449',
+};
+
+const inputStyle = {
+  width: '100%',
+  height: '56px',
+  borderRadius: '16px',
+  border: '1px solid #E8E8E8',
+  backgroundColor: '#FCFCFC',
+  padding: '0 16px',
+  fontSize: '15px',
+  color: '#1F2937',
+  outline: 'none',
+};
+
+const checkboxRowStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px',
+  marginBottom: '24px',
+  fontSize: '14px',
+  color: '#4B5563',
+  cursor: 'pointer',
+};
+
+const checkboxStyle = {
+  width: '16px',
+  height: '16px',
+};
+
+const loginButtonStyle = {
+  width: '100%',
+  height: '56px',
+  border: 'none',
+  borderRadius: '18px',
+  backgroundColor: '#FFF3A6',
+  color: '#14233C',
+  fontSize: '18px',
+  fontWeight: 900,
+  cursor: 'pointer',
+  boxShadow: '0 10px 24px rgba(255, 243, 166, 0.45)',
+  marginBottom: '14px',
+};
+
+const guestButtonStyle = {
+  width: '100%',
+  height: '54px',
+  borderRadius: '18px',
+  border: '1px solid #E5E7EB',
+  backgroundColor: '#FFFFFF',
+  color: '#344054',
+  fontSize: '16px',
+  fontWeight: 800,
+  cursor: 'pointer',
+};
+
+const bottomTextWrapStyle = {
+  marginTop: '28px',
+  textAlign: 'center',
+};
+
+const bottomTextStyle = {
+  margin: '0 0 8px 0',
+  color: '#667085',
+  fontSize: '14px',
+};
+
+const signupTextStyle = {
+  margin: 0,
+  color: '#17233A',
+  fontSize: '14px',
+  fontWeight: 800,
+};
+
+const splashStyle = {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  width: '100%',
+  height: '100vh',
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'center',
+  alignItems: 'center',
+  background: 'linear-gradient(180deg, #FFFDF2 0%, #FFFFFF 100%)',
+  zIndex: 999,
+  transition: 'opacity 0.8s ease-out',
+};
+
+const splashLogoWrapperStyle = {
+  width: '120px',
+  height: '120px',
+  borderRadius: '32px',
+  backgroundColor: '#FFF9C4',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  boxShadow: '0 18px 40px rgba(0, 0, 0, 0.08)',
+  marginBottom: '20px',
+};
+
+const splashLogoStyle = {
+  width: '84px',
+  height: '84px',
+  objectFit: 'contain',
+};
+
+const splashTitleStyle = {
+  margin: '0 0 10px 0',
+  fontSize: '32px',
+  fontWeight: '900',
+  letterSpacing: '-0.03em',
+  color: '#17233A',
+};
+
+const splashSubtitleStyle = {
+  margin: 0,
+  fontSize: '16px',
+  color: '#667085',
+  textAlign: 'center',
+};
