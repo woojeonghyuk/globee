@@ -1,0 +1,286 @@
+/* 페이지 전체 배경 */
+.t-login-page {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    background: linear-gradient(135deg, #f8fbff 0%, #eef4ff 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    padding: 24px;
+  }
+  
+  /* 배경에 은은한 빛 */
+  .t-login-page__background-glow {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(90px);
+    opacity: 0.28;
+    pointer-events: none;
+  }
+  
+  .t-login-page__background-glow--left {
+    width: 240px;
+    height: 240px;
+    background: #dce9ff;
+    top: 10%;
+    left: 12%;
+  }
+  
+  .t-login-page__background-glow--right {
+    width: 280px;
+    height: 280px;
+    background: #cfe1ff;
+    bottom: 10%;
+    right: 12%;
+  }
+  
+  /* 로그인 카드 */
+  .t-login-page__card {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 560px;
+    background: rgba(255, 255, 255, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(12px);
+    border-radius: 34px;
+    box-shadow: 0 22px 54px rgba(20, 33, 61, 0.08);
+    padding: 34px 34px 30px;
+    animation: tLoginCardFadeUp 0.55s ease;
+  }
+  
+  /* 카드 등장 애니메이션 */
+  @keyframes tLoginCardFadeUp {
+    0% {
+      opacity: 0;
+      transform: translateY(20px) scale(0.985);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  
+  /* 뒤로가기 */
+  .t-login-page__back-button {
+    display: inline-flex;
+    align-items: center;
+    color: #7c8699;
+    font-size: 0.94rem;
+    font-weight: 700;
+    margin-bottom: 18px;
+    transition: color 0.2s ease, transform 0.2s ease;
+  }
+  
+  .t-login-page__back-button:hover {
+    color: #14213d;
+    transform: translateX(-2px);
+  }
+  
+  /* 헤더 */
+  .t-login-page__header {
+    margin-bottom: 24px;
+  }
+  
+  /* teacher 배지 */
+  .t-login-page__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #dce9ff;
+    color: #14213d;
+    font-size: 0.88rem;
+    font-weight: 800;
+    padding: 9px 16px;
+    border-radius: 999px;
+    margin-bottom: 16px;
+    box-shadow: 0 8px 16px rgba(20, 33, 61, 0.04);
+  }
+  
+  /* 큰 제목 */
+  .t-login-page__title {
+    font-size: 2.5rem;
+    font-weight: 900;
+    line-height: 1.05;
+    letter-spacing: -0.04em;
+    color: #14213d;
+    margin-bottom: 10px;
+  }
+  
+  /* 설명 */
+  .t-login-page__subtitle {
+    font-size: 1.05rem;
+    line-height: 1.6;
+    color: #7b8699;
+  }
+  
+  /* 폼 */
+  .t-login-page__form {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* 입력 한 세트 */
+  .t-login-page__field {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 18px;
+  }
+  
+  /* 라벨 */
+  .t-login-page__label {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #14213d;
+    margin-bottom: 10px;
+  }
+  
+  /* 입력창 */
+  .t-login-page__input {
+    width: 100%;
+    height: 68px;
+    border: 1px solid #e3e8f2;
+    border-radius: 20px;
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 0 20px;
+    font-size: 1rem;
+    color: #14213d;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  
+  .t-login-page__input::placeholder {
+    color: #9aa3b4;
+  }
+  
+  .t-login-page__input:focus {
+    border-color: #cfe1ff;
+    box-shadow: 0 0 0 4px rgba(207, 225, 255, 0.24);
+    transform: translateY(-1px);
+  }
+  
+  /* 체크박스 줄 */
+  .t-login-page__checkbox-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin: 2px 0 22px;
+    cursor: pointer;
+  }
+  
+  /* 체크박스 */
+  .t-login-page__checkbox {
+    width: 19px;
+    height: 19px;
+    accent-color: #cfe1ff;
+    cursor: pointer;
+  }
+  
+  /* 체크박스 텍스트 */
+  .t-login-page__checkbox-text {
+    font-size: 0.96rem;
+    color: #6f7890;
+    font-weight: 600;
+  }
+  
+  /* 로그인 버튼 */
+  .t-login-page__login-button {
+    width: 100%;
+    height: 70px;
+    border-radius: 22px;
+    background: linear-gradient(135deg, #dce9ff 0%, #c9dcff 100%);
+    color: #14213d;
+    font-size: 1.45rem;
+    font-weight: 900;
+    box-shadow: 0 12px 24px rgba(201, 220, 255, 0.26);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .t-login-page__login-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 28px rgba(201, 220, 255, 0.34);
+  }
+  
+  /* 하단 */
+  .t-login-page__footer {
+    text-align: center;
+    margin-top: 24px;
+  }
+  
+  .t-login-page__footer-text {
+    font-size: 0.98rem;
+    color: #7d879a;
+    margin-bottom: 10px;
+  }
+  
+  .t-login-page__signup-button {
+    color: #14213d;
+    font-size: 1.02rem;
+    font-weight: 900;
+    line-height: 1.5;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+  
+  .t-login-page__signup-button:hover {
+    opacity: 0.75;
+    transform: translateY(-1px);
+  }
+  
+  /* 태블릿 */
+  @media (max-width: 768px) {
+    .t-login-page__card {
+      max-width: 100%;
+      padding: 28px 22px 24px;
+      border-radius: 26px;
+    }
+  
+    .t-login-page__title {
+      font-size: 2.2rem;
+    }
+  
+    .t-login-page__subtitle {
+      font-size: 0.98rem;
+    }
+  
+    .t-login-page__input {
+      height: 60px;
+      border-radius: 18px;
+      font-size: 0.96rem;
+    }
+  
+    .t-login-page__login-button {
+      height: 62px;
+      font-size: 1.25rem;
+      border-radius: 18px;
+    }
+  }
+  
+  /* 모바일 */
+  @media (max-width: 480px) {
+    .t-login-page {
+      padding: 16px;
+    }
+  
+    .t-login-page__title {
+      font-size: 2rem;
+    }
+  
+    .t-login-page__badge {
+      font-size: 0.8rem;
+      padding: 8px 14px;
+    }
+  
+    .t-login-page__input {
+      padding: 0 16px;
+    }
+  
+    .t-login-page__footer-text {
+      font-size: 0.92rem;
+    }
+  
+    .t-login-page__signup-button {
+      font-size: 0.95rem;
+    }
+  }

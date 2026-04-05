@@ -1,0 +1,369 @@
+.start-page {
+    width: 100%;
+    height: 100vh;
+    background: linear-gradient(135deg, #fffdf2 0%, #fff8d8 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 28px 40px;
+  }
+  
+  /* splash */
+  .start-page__splash {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: linear-gradient(135deg, #fffdf2 0%, #fff8d8 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.8s ease, visibility 0.8s ease;
+  }
+  
+  .start-page__splash--hide {
+    opacity: 0;
+    visibility: hidden;
+  }
+  
+  .start-page__splash-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: splashFloat 1.4s ease;
+  }
+  
+  .start-page__splash-logo-box {
+    width: 150px;
+    height: 150px;
+    border-radius: 36px;
+    background-color: #fff2a8;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 18px 40px rgba(20, 33, 61, 0.10);
+    margin-bottom: 24px;
+  }
+  
+  .start-page__splash-logo {
+    width: 96px;
+    height: 96px;
+    object-fit: contain;
+  }
+  
+  .start-page__splash-title {
+    font-size: 2.5drem;
+    font-weight: 900;
+    letter-spacing: -0.03em;
+    color: #14213d;
+    margin-bottom: 10px;
+  }
+  
+  .start-page__splash-subtitle {
+    font-size: 1.05rem;
+    color: #7d879b;
+    font-weight: 600;
+  }
+  
+  @keyframes splashFloat {
+    0% {
+      opacity: 0;
+      transform: translateY(18px) scale(0.96);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  
+  .start-page__container {
+    width: 100%;
+    max-width: 1500px;
+    height: 100%;
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    align-items: center;
+    gap: 48px;
+  }
+  
+  .start-page__left {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    padding-left: 60px;
+  }
+  
+  .start-page__brand-logo-box {
+    width: 122px;
+    height: 122px;
+    border-radius: 30px;
+    background-color: #fff2a8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 14px 30px rgba(20, 33, 61, 0.08);
+    margin-bottom: 26px;
+  }
+  
+  .start-page__brand-logo {
+    width: 76px;
+    height: 76px;
+    object-fit: contain;
+  }
+  
+  .start-page__brand-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #fff09d;
+    color: #14213d;
+    font-size: 1.05rem;
+    font-weight: 800;
+    padding: 12px 22px;
+    border-radius: 999px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 18px rgba(20, 33, 61, 0.05);
+  }
+  
+  .start-page__title {
+    font-size: clamp(3.2rem, 4.4vw, 5rem);
+    line-height: 1.02;
+    font-weight: 900;
+    letter-spacing: -0.045em;
+    color: #14213d;
+    margin-bottom: 28px;
+  }
+  
+  .start-page__description {
+    font-size: 1.38rem;
+    line-height: 1.8;
+    color: #6d7890;
+    margin-bottom: 36px;
+  }
+  
+  .start-page__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+  
+  .start-page__tag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.82);
+    color: #243154;
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 16px 24px;
+    border-radius: 999px;
+    border: 1px solid rgba(20, 33, 61, 0.05);
+    box-shadow: 0 10px 24px rgba(20, 33, 61, 0.05);
+  }
+  
+  .start-page__right {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .start-page__role-card {
+    width: 100%;
+    max-width: 560px;
+    min-height: 700px;
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid rgba(255, 255, 255, 0.78);
+    border-radius: 38px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 24px 60px rgba(20, 33, 61, 0.10);
+    padding: 48px 36px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  
+  .start-page__role-title {
+    font-size: 3rem;
+    font-weight: 900;
+    color: #14213d;
+    margin-bottom: 12px;
+  }
+  
+  .start-page__role-subtitle {
+    font-size: 1.1rem;
+    color: #7b8599;
+    line-height: 1.7;
+    margin-bottom: 42px;
+  }
+  
+  .start-page__role-button-group {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .start-page__role-button {
+    width: 100%;
+    border: none;
+    border-radius: 28px;
+    padding: 24px 22px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    text-align: left;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .start-page__role-button:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 18px 30px rgba(20, 33, 61, 0.10);
+  }
+  
+  .start-page__role-button--student {
+    background: linear-gradient(135deg, #fff1a6 0%, #ffe57d 100%);
+  }
+  
+  .start-page__role-button--teacher {
+    background: linear-gradient(135deg, #eef4ff 0%, #dde9ff 100%);
+  }
+  
+  .start-page__role-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 20px;
+    background-color: rgba(255, 255, 255, 0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    flex-shrink: 0;
+  }
+  
+  .start-page__role-text-box {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .start-page__role-button-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #14213d;
+    margin-bottom: 6px;
+  }
+  
+  .start-page__role-button-desc {
+    font-size: 1rem;
+    color: #68738b;
+    line-height: 1.6;
+  }
+  
+  .start-page__role-footer {
+    margin-top: 28px;
+    text-align: center;
+    color: #7b8599;
+    font-size: 0.98rem;
+    line-height: 1.6;
+  }
+  
+  @media (max-width: 1300px) {
+    .start-page {
+      overflow-y: auto;
+      height: auto;
+      min-height: 100vh;
+      padding: 28px;
+    }
+  
+    .start-page__container {
+      grid-template-columns: 1fr;
+      height: auto;
+      gap: 30px;
+    }
+  
+    .start-page__left {
+      padding-left: 0;
+    }
+  
+    .start-page__role-card {
+      max-width: 100%;
+      min-height: auto;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .start-page {
+      padding: 18px;
+    }
+  
+    .start-page__splash-logo-box {
+      width: 120px;
+      height: 120px;
+      border-radius: 28px;
+    }
+  
+    .start-page__splash-logo {
+      width: 76px;
+      height: 76px;
+    }
+  
+    .start-page__splash-title {
+      font-size: 2.2rem;
+    }
+  
+    .start-page__brand-logo-box {
+      width: 96px;
+      height: 96px;
+      border-radius: 24px;
+    }
+  
+    .start-page__brand-logo {
+      width: 60px;
+      height: 60px;
+    }
+  
+    .start-page__title {
+      font-size: clamp(2.5rem, 10vw, 4rem);
+    }
+  
+    .start-page__description {
+      font-size: 1rem;
+      line-height: 1.7;
+    }
+  
+    .start-page__tag {
+      width: 100%;
+      justify-content: center;
+      font-size: 0.95rem;
+      padding: 14px 18px;
+    }
+  
+    .start-page__role-card {
+      padding: 30px 22px;
+      border-radius: 28px;
+    }
+  
+    .start-page__role-title {
+      font-size: 2.2rem;
+    }
+  
+    .start-page__role-button {
+      padding: 20px 18px;
+      border-radius: 22px;
+    }
+  
+    .start-page__role-icon {
+      width: 56px;
+      height: 56px;
+      font-size: 1.7rem;
+    }
+  
+    .start-page__role-button-title {
+      font-size: 1.25rem;
+    }
+  
+    .start-page__role-button-desc {
+      font-size: 0.92rem;
+    }
+  }
