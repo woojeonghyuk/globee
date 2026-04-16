@@ -1,0 +1,254 @@
+import {
+  createContext,
+  ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+
+import {
+  ApplicationItem,
+} from '@/src/data/classes';
+import { supabase } from '@/src/lib/supabase';
+
+type ApplicationInput = Omit<ApplicationItem, 'id'>;
+
+type ApplicationRow = {
+  id: string;
+  class_id: string;
+  child_id: string;
+  status:
+    | 'applied'
+    | 'waiting'
+    | 'confirmed'
+    | 'completed'
+    | 'no_show'
+    | 'canceled';
+  children: {
+    full_name: string;
+  } | null;
+};
+
+const activeApplicationStatuses = new Set<ApplicationItem['status']>([
+  '신청 완료',
+  '확정 대기',
+  '수업 확정',
+]);
+
+const statusMap: Record<ApplicationRow['status'], ApplicationItem['status']> = {
+  applied: '신청 완료',
+  waiting: '확정 대기',
+  confirmed: '수업 확정',
+  completed: '수업 완료',
+  no_show: '미참여',
+  canceled: '신청 취소',
+};
+
+function isActiveApplication(application: ApplicationItem) {
+  return activeApplicationStatuses.has(application.status);
+}
+
+type ApplicationsContextValue = {
+  applications: ApplicationItem[];
+  addApplication: (application: ApplicationInput) => Promise<boolean>;
+  cancelApplication: (id: string) => Promise<void>;
+  hasActiveApplication: (classId: string, childId: string) => boolean;
+  refreshApplications: () => Promise<void>;
+};
+
+const ApplicationsContext = createContext<ApplicationsContextValue | null>(null);
+
+type ApplicationsProviderProps = {
+  children: ReactNode;
+};
+
+export function ApplicationsProvider({ children }: ApplicationsProviderProps) {
+  const [applications, setApplications] = useState<ApplicationItem[]>([]);
+
+  const mapApplicationRow = (row: ApplicationRow): ApplicationItem => {
+    return {
+      id: row.id,
+      classId: row.class_id,
+      childId: row.child_id,
+      childName: row.children?.full_name ?? '',
+      status: statusMap[row.status],
+    };
+  };
+
+  const refreshApplications = useCallback(async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        setApplications([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('applications')
+        .select('id,class_id,child_id,status,children(full_name)')
+        .neq('status', 'canceled')
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        setApplications((data as unknown as ApplicationRow[]).map(mapApplicationRow));
+      }
+    } catch {
+      setApplications([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshApplications();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        refreshApplications();
+      }
+
+      if (event === 'SIGNED_OUT') {
+        setApplications([]);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [refreshApplications]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('applications-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'applications' },
+        () => {
+          refreshApplications();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refreshApplications]);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      refreshApplications();
+    }, 15000);
+
+    return () => clearInterval(intervalId);
+  }, [refreshApplications]);
+
+  const value = useMemo<ApplicationsContextValue>(
+    () => ({
+      applications,
+      refreshApplications,
+      addApplication: async (application) => {
+        const alreadyApplied = applications.some(
+          (item) =>
+            isActiveApplication(item) &&
+            item.classId === application.classId &&
+            item.childId === application.childId,
+        );
+
+        if (alreadyApplied) return false;
+
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (user) {
+          const { data, error } = await supabase.rpc('apply_to_class', {
+            p_child_id: application.childId,
+            p_class_id: application.classId,
+          });
+
+          if (error) throw error;
+          const row = data as ApplicationRow;
+
+          setApplications((prev) => [
+            {
+              id: row.id,
+              classId: row.class_id,
+              childId: row.child_id,
+              childName: application.childName,
+              status: statusMap[row.status],
+            },
+            ...prev,
+          ]);
+
+          return true;
+        }
+
+        setApplications((prev) => {
+          if (
+            prev.some(
+              (item) =>
+                isActiveApplication(item) &&
+                item.classId === application.classId &&
+                item.childId === application.childId,
+            )
+          ) {
+            return prev;
+          }
+
+          return [
+            {
+              ...application,
+              id: `application-${Date.now()}-${application.childId}`,
+            },
+            ...prev,
+          ];
+        });
+
+        return true;
+      },
+      cancelApplication: async (id) => {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (user) {
+          const { error } = await supabase
+            .from('applications')
+            .update({ status: 'canceled', updated_at: new Date().toISOString() })
+            .eq('id', id);
+
+          if (error) throw error;
+        }
+
+        setApplications((prev) => prev.filter((item) => item.id !== id));
+      },
+      hasActiveApplication: (classId, childId) =>
+        applications.some(
+          (item) =>
+            isActiveApplication(item) &&
+            item.classId === classId &&
+            item.childId === childId,
+        ),
+    }),
+    [applications, refreshApplications],
+  );
+
+  return (
+    <ApplicationsContext.Provider value={value}>
+      {children}
+    </ApplicationsContext.Provider>
+  );
+}
+
+export function useApplications() {
+  const value = useContext(ApplicationsContext);
+
+  if (!value) {
+    throw new Error('useApplications must be used within ApplicationsProvider');
+  }
+
+  return value;
+}

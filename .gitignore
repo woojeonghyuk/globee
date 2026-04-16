@@ -1,0 +1,43 @@
+# dependencies
+node_modules/
+mobile/node_modules/
+admin-web/node_modules/
+
+# env
+.env
+.env.*
+*.env
+.env.local
+mobile/.env
+mobile/.env.*
+mobile/.env.local
+admin-web/.env
+admin-web/.env.*
+admin-web/.env.local
+
+# Expo
+.expo/
+mobile/.expo/
+mobile/.expo-check/
+
+# build outputs
+dist/
+build/
+admin-web/dist/
+mobile/dist/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Supabase temp
+supabase/.temp/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+EOF
