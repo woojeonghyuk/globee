@@ -491,7 +491,7 @@ function buildUserOverview(
 function App() {
   const [sessionReady, setSessionReady] = useState(false);
   const [profile, setProfile] = useState<AdminProfile | null>(null);
-  const [adminId, setAdminId] = useState('globee');
+  const [adminId, setAdminId] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [applications, setApplications] = useState<ApplicationRow[]>([]);
@@ -980,6 +980,9 @@ function App() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setProfile(null);
+    setAdminId('');
+    setPassword('');
+    setLoginError('');
     setApplications([]);
     setProfiles([]);
     setChildren([]);
@@ -1669,10 +1672,16 @@ function App() {
             앱 사용자 현황과 완료수업 등록을 관리해 주세요.
           </p>
 
-          <form className="login-form" onSubmit={handleLogin}>
+          <form
+            autoComplete="off"
+            className="login-form"
+            onSubmit={handleLogin}
+          >
             <label>
               운영진 아이디
               <input
+                autoComplete="off"
+                name="globee-admin-id"
                 value={adminId}
                 onChange={(event) => setAdminId(event.target.value)}
                 placeholder="globee"
@@ -1681,6 +1690,8 @@ function App() {
             <label>
               비밀번호
               <input
+                autoComplete="new-password"
+                name="globee-admin-password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="비밀번호"
