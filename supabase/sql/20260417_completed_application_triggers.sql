@@ -1,0 +1,60 @@
+create or replace function public.mark_application_completed_from_completion()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.applications
+  set status = 'completed',
+      updated_at = now()
+  where id = new.application_id;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_completed_class_mark_application_completed
+on public.completed_classes;
+
+create trigger on_completed_class_mark_application_completed
+after insert or update of application_id
+on public.completed_classes
+for each row
+execute function public.mark_application_completed_from_completion();
+
+create or replace function public.close_class_after_finalized_application()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.status::text not in ('completed', 'no_show') then
+    return new;
+  end if;
+
+  update public.classes c
+  set is_open = false,
+      updated_at = now()
+  where c.id = new.class_id
+    and not exists (
+      select 1
+      from public.applications a
+      where a.class_id = new.class_id
+        and a.status::text in ('applied', 'waiting', 'confirmed')
+    );
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_application_finalized_close_class
+on public.applications;
+
+create trigger on_application_finalized_close_class
+after update of status
+on public.applications
+for each row
+when (old.status is distinct from new.status)
+execute function public.close_class_after_finalized_application();

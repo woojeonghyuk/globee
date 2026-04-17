@@ -155,6 +155,12 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: childrenDeleteError.message }, 500);
   }
 
+  const { error: authDeleteError } = await adminClient.auth.admin.deleteUser(user.id);
+
+  if (authDeleteError) {
+    return jsonResponse({ error: authDeleteError.message }, 500);
+  }
+
   const { error: profileDeleteError } = await adminClient
     .from('profiles')
     .delete()
@@ -162,12 +168,6 @@ Deno.serve(async (req) => {
 
   if (profileDeleteError) {
     return jsonResponse({ error: profileDeleteError.message }, 500);
-  }
-
-  const { error: authDeleteError } = await adminClient.auth.admin.deleteUser(user.id);
-
-  if (authDeleteError) {
-    return jsonResponse({ error: authDeleteError.message }, 500);
   }
 
   return jsonResponse({ ok: true });

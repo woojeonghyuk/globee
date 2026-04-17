@@ -25,6 +25,7 @@ dist/
 build/
 admin-web/dist/
 mobile/dist/
+*.tsbuildinfo
 
 # logs
 npm-debug.log*
@@ -40,4 +41,3 @@ supabase/.temp/
 Thumbs.db
 .vscode/
 .idea/
-EOF

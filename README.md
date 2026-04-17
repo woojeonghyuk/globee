@@ -1,53 +1,56 @@
-# 🌍 Globee
+# Globee
 
-외국인 유학생(선생님)과 초등학생(학생)을 연결하여  
-문화 교류 기반 수업을 제공하는 플랫폼
+Globee는 아이들이 가까운 유학생 선생님과 나라별 문화, 음식, 놀이, 언어를 자연스럽게 경험하고 가족이 그 기록을 모아가는 학부모 앱과 운영진 웹입니다.
 
----
+## Project Structure
 
-## 🧩 서비스 개요
+```text
+mobile/      Expo + React Native 학부모 앱
+admin-web/   Vite + React 운영진 웹
+web/         공개 웹사이트, 개인정보처리방침, 이용약관, 계정 삭제 안내
+supabase/    SQL 마이그레이션, RLS 정책, Edge Functions
+```
 
-Globee는  
-유학생이 자신의 문화와 언어를 활용해 수업을 개설하고,  
-초등학생은 다양한 국가의 문화를 체험할 수 있는 플랫폼입니다.
+## Main Stack
 
----
+- Mobile: Expo, React Native, Expo Router
+- Admin Web: React, Vite, TypeScript
+- Backend: Supabase Auth, PostgreSQL, Storage, Realtime, Edge Functions
+- SMS OTP: Supabase Phone Auth + Twilio
+- Public/Admin Web Deploy: Vercel
+- Mobile Build: EAS Build
 
-## 👤 사용자 유형
+## Important URLs
 
-### 1. 학생 (초등학생)
-- 수업 탐색 및 신청
-- 다양한 국가 문화 체험
-- 외국인과 교류 경험
+- Public site: `https://globee-st.vercel.app/`
+- Admin web: `https://globee-admin.vercel.app/`
+- Supabase project: `https://emuvubzjxdfdonjrabaw.supabase.co`
 
-### 2. 선생님 (유학생)
-- 수업 개설
-- 자신의 문화/언어 기반 수업 진행
-- 수익 창출
+## Security Notes
 
----
+- Do not commit `.env`, `.env.local`, service role keys, or secret keys.
+- Mobile and admin web may only use Supabase URL and anon/publishable key.
+- Supabase service role key is used only inside Edge Functions through Supabase environment variables.
+- Admin web session persistence is disabled, so operators must log in again after closing or refreshing the page.
+- Test OTP entries in Supabase Auth should stay empty before production release.
 
-## 🔐 핵심 기능 (MVP 기준)
+## Common Checks
 
-### ✅ 인증
-- 회원가입 / 로그인
-- 사용자 타입 선택 (학생 / 선생님)
+```bash
+cd mobile
+npx.cmd tsc --noEmit
+npm.cmd run lint
+```
 
-### ✅ 학생 기능
-- 수업 목록 조회
-- 수업 신청
+```bash
+cd admin-web
+npm.cmd run build
+```
 
-### ✅ 선생님 기능
-- 수업 개설
-- 수업 관리
+## Launch Flow
 
----
-
-## 🧠 서비스 흐름
-
-1. 사용자는 로그인 시 "학생 / 선생님" 선택
-2. 선생님 → 수업 생성
-3. 학생 → 수업 목록 조회 후 신청
-4. 매칭 후 수업 진행
-
----
+1. Apply new SQL files in `supabase/sql` through Supabase SQL Editor.
+2. Deploy changed Edge Functions.
+3. Push code to GitHub so Vercel redeploys `web` and `admin-web`.
+4. Build Android preview APK with EAS and test on a real Android device.
+5. Build production AAB and submit through Google Play Console.

@@ -1,21 +1,27 @@
-# Globee Web Documents
+# Globee Public Web
 
-Globee 앱 출시를 위한 공개 문서 사이트입니다.
+앱 출시와 사용자 안내를 위한 공개 웹사이트입니다. 정적 HTML/CSS로 구성되어 Vercel에 배포합니다.
 
 ## Pages
 
-- `index.html`: 문서 링크 홈
+- `index.html`: Globee 소개와 주요 안내
 - `privacy.html`: 개인정보처리방침
 - `terms.html`: 이용약관
 - `delete-account.html`: 계정 삭제 안내
 - `styles.css`: 공통 스타일
 
-## Play Store URL
+## Current URLs
 
-배포 후 Google Play Console에는 아래 URL을 사용합니다.
+- Home: `https://globee-st.vercel.app/`
+- Privacy Policy: `https://globee-st.vercel.app/privacy.html`
+- Terms: `https://globee-st.vercel.app/terms.html`
+- Account Deletion: `https://globee-st.vercel.app/delete-account.html`
 
-- 개인정보처리방침: `https://YOUR_DOMAIN/privacy.html`
-- 계정 삭제 안내: `https://YOUR_DOMAIN/delete-account.html`
+## Notes
+
+- 공개 웹사이트에는 Supabase key가 필요하지 않습니다.
+- Play Store에는 개인정보처리방침 URL과 계정 삭제 안내 URL을 입력합니다.
+- 결제, 위치정보, 마케팅 푸시, 사진 업로드 정책이 바뀌면 문서를 함께 수정해야 합니다.
 
 ## Contact
 

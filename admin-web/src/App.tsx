@@ -783,19 +783,23 @@ function App() {
     setChildren((childrenResponse.data ?? []) as ChildRow[]);
     setClasses((classesResponse.data ?? []) as ClassRow[]);
 
-    if (nextApplications.length === 0) {
-      setSelectedId(null);
-    } else if (
-      !selectedId ||
-      !nextApplications.some((row) => row.id === selectedId)
-    ) {
+    setSelectedId((currentSelectedId) => {
+      if (nextApplications.length === 0) return null;
+      if (
+        currentSelectedId &&
+        nextApplications.some((row) => row.id === currentSelectedId)
+      ) {
+        return currentSelectedId;
+      }
+
       const sortedApplications = sortApplicationsForOperation(nextApplications);
       const firstActive =
         sortedApplications.find((row) => activeStatuses.has(row.status)) ??
         sortedApplications[0];
-      setSelectedId(firstActive.id);
-    }
-  }, [selectedId]);
+
+      return firstActive.id;
+    });
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(async () => {
@@ -1063,30 +1067,14 @@ function App() {
     setCancelingClassId(classItem.id);
     setMessage('');
 
-    const classResponse = await supabase
-      .from('classes')
-      .update({ is_open: false, updated_at: new Date().toISOString() })
-      .eq('id', classItem.id);
-
-    if (classResponse.error) {
-      setCancelingClassId(null);
-      setMessage(`수업을 취소하지 못했어요. ${classResponse.error.message}`);
-      return;
-    }
-
-    const applicationResponse = await supabase
-      .from('applications')
-      .update({ status: 'canceled', updated_at: new Date().toISOString() })
-      .eq('class_id', classItem.id)
-      .in('status', ['applied', 'waiting', 'confirmed']);
+    const { error } = await supabase.rpc('admin_cancel_class', {
+      p_class_id: classItem.id,
+    });
 
     setCancelingClassId(null);
 
-    if (applicationResponse.error) {
-      setMessage(
-        `수업은 닫혔지만 신청 상태를 바꾸지 못했어요. ${applicationResponse.error.message}`,
-      );
-      await loadDashboardData();
+    if (error) {
+      setMessage(`수업을 취소하지 못했어요. ${error.message}`);
       return;
     }
 
@@ -1129,10 +1117,6 @@ function App() {
       return;
     }
 
-    const applicationIds = (linkedApplications ?? []).map((application) =>
-      String(application.id),
-    );
-
     const photosToDelete = (linkedApplications ?? []).flatMap((application) =>
       getAllCompletedPhotos(
         (application as Pick<ApplicationRow, 'completed_classes'>)
@@ -1140,55 +1124,28 @@ function App() {
       ),
     );
 
-    const photoDeleteError = await deleteCompletionPhotos(photosToDelete);
-    if (photoDeleteError) {
-      setDeletingClassId(null);
-      setMessage(`사진 파일을 정리하지 못했어요. ${photoDeleteError}`);
-      return;
-    }
-
-    if (applicationIds.length > 0) {
-      const completedResponse = await supabase
-        .from('completed_classes')
-        .delete()
-        .in('application_id', applicationIds);
-
-      if (completedResponse.error) {
-        setDeletingClassId(null);
-        setMessage(
-          `완료수업 기록을 삭제하지 못했어요. ${completedResponse.error.message}`,
-        );
-        return;
-      }
-
-      const applicationsResponse = await supabase
-        .from('applications')
-        .delete()
-        .eq('class_id', classItem.id);
-
-      if (applicationsResponse.error) {
-        setDeletingClassId(null);
-        setMessage(
-          `신청 기록을 삭제하지 못했어요. ${applicationsResponse.error.message}`,
-        );
-        return;
-      }
-    }
-
-    const classResponse = await supabase
-      .from('classes')
-      .delete()
-      .eq('id', classItem.id);
+    const { error: deleteClassError } = await supabase.rpc('admin_delete_class', {
+      p_class_id: classItem.id,
+    });
 
     setDeletingClassId(null);
 
-    if (classResponse.error) {
-      setMessage(`수업을 삭제하지 못했어요. ${classResponse.error.message}`);
+    if (deleteClassError) {
+      setMessage(`수업을 삭제하지 못했어요. ${deleteClassError.message}`);
       return;
     }
 
     if (selectedApplication?.class_id === classItem.id) {
       setSelectedId(null);
+    }
+
+    const photoDeleteError = await removeCompletionPhotoFiles(photosToDelete);
+    if (photoDeleteError) {
+      setMessage(
+        `수업 데이터는 삭제했지만 사진 파일 일부를 정리하지 못했어요. ${photoDeleteError}`,
+      );
+      await loadDashboardData();
+      return;
     }
 
     setMessage('수업과 연결된 테스트 데이터를 완전히 삭제했어요.');
@@ -1457,7 +1414,7 @@ function App() {
     });
   };
 
-  const deleteCompletionPhotos = async (photos: CompletedClassPhotoRow[]) => {
+  const removeCompletionPhotoFiles = async (photos: CompletedClassPhotoRow[]) => {
     if (!photos.length) return null;
 
     const storagePaths = photos.map((photo) => photo.storage_path);
@@ -1465,7 +1422,14 @@ function App() {
       .from(completionPhotoBucket)
       .remove(storagePaths);
 
-    if (storageError) return storageError.message;
+    return storageError?.message ?? null;
+  };
+
+  const deleteCompletionPhotos = async (photos: CompletedClassPhotoRow[]) => {
+    if (!photos.length) return null;
+
+    const storageError = await removeCompletionPhotoFiles(photos);
+    if (storageError) return storageError;
 
     const { error: tableError } = await supabase
       .from('completed_class_photos')
@@ -1507,7 +1471,13 @@ function App() {
           upsert: false,
         });
 
-      if (uploadError) return uploadError.message;
+      if (uploadError) {
+        if (uploadedPaths.length > 0) {
+          await supabase.storage.from(completionPhotoBucket).remove(uploadedPaths);
+        }
+
+        return uploadError.message;
+      }
 
       uploadedPaths.push(storagePath);
       rows.push({
