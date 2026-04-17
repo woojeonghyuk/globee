@@ -9,9 +9,14 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "com.globee.parent",
+      "buildNumber": "1",
+      "supportsTablet": false
     },
     "android": {
+      "package": "com.globee.parent",
+      "versionCode": 1,
+      "permissions": [],
       "adaptiveIcon": {
         "backgroundColor": "#fff8d8",
         "foregroundImage": "./assets/images/globee-logo.png"

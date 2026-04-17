@@ -135,6 +135,12 @@ function getCompletedPhotos(completion: CompletedClassRecord | undefined) {
   });
 }
 
+function getAllCompletedPhotos(value: CompletedClassValue) {
+  return getCompletedClasses(value).flatMap((completion) =>
+    getCompletedPhotos(completion),
+  );
+}
+
 function sanitizeStorageFileName(fileName: string) {
   const normalized = fileName.trim().toLowerCase();
   const fallbackName = 'photo.jpg';
@@ -1107,7 +1113,9 @@ function App() {
     const { data: linkedApplications, error: linkedApplicationsError } =
       await supabase
         .from('applications')
-        .select('id')
+        .select(
+          'id,completed_classes(id,completed_at,diary,teacher_comment,completed_class_photos(id,completed_class_id,storage_path,file_name,sort_order,created_at))',
+        )
         .eq('class_id', classItem.id);
 
     if (linkedApplicationsError) {
@@ -1121,6 +1129,20 @@ function App() {
     const applicationIds = (linkedApplications ?? []).map((application) =>
       String(application.id),
     );
+
+    const photosToDelete = (linkedApplications ?? []).flatMap((application) =>
+      getAllCompletedPhotos(
+        (application as Pick<ApplicationRow, 'completed_classes'>)
+          .completed_classes ?? null,
+      ),
+    );
+
+    const photoDeleteError = await deleteCompletionPhotos(photosToDelete);
+    if (photoDeleteError) {
+      setDeletingClassId(null);
+      setMessage(`사진 파일을 정리하지 못했어요. ${photoDeleteError}`);
+      return;
+    }
 
     if (applicationIds.length > 0) {
       const completedResponse = await supabase
@@ -1220,6 +1242,16 @@ function App() {
     )[0];
 
     if (existingCompletion) {
+      const photoDeleteError = await deleteCompletionPhotos(
+        getCompletedPhotos(existingCompletion),
+      );
+
+      if (photoDeleteError) {
+        setSaving(false);
+        setMessage(`사진 파일을 정리하지 못했어요. ${photoDeleteError}`);
+        return;
+      }
+
       const deleteResponse = await supabase
         .from('completed_classes')
         .delete()
@@ -1281,6 +1313,16 @@ function App() {
     )[0];
 
     if (existingCompletion) {
+      const photoDeleteError = await deleteCompletionPhotos(
+        getCompletedPhotos(existingCompletion),
+      );
+
+      if (photoDeleteError) {
+        setSaving(false);
+        setMessage(`사진 파일을 정리하지 못했어요. ${photoDeleteError}`);
+        return;
+      }
+
       const deleteResponse = await supabase
         .from('completed_classes')
         .delete()
