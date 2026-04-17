@@ -1684,7 +1684,7 @@ function App() {
                 name="globee-admin-id"
                 value={adminId}
                 onChange={(event) => setAdminId(event.target.value)}
-                placeholder="globee"
+                placeholder="아이디"
               />
             </label>
             <label>
