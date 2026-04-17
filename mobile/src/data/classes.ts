@@ -25,9 +25,9 @@ export type ApplicationItem = {
   childId: string;
   childName: string;
   status:
+    | '신청 확인중'
     | '신청 완료'
     | '확정 대기'
-    | '수업 확정'
     | '수업 완료'
     | '미참여'
     | '신청 취소';

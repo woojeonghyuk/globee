@@ -15,7 +15,7 @@ supabase/    SQL 마이그레이션, RLS 정책, Edge Functions
 
 - Mobile: Expo, React Native, Expo Router
 - Admin Web: React, Vite, TypeScript
-- Backend: Supabase Auth, PostgreSQL, Storage, Realtime, Edge Functions
+- Backend: Supabase Auth, PostgreSQL, Storage, Realtime, RPC, Edge Functions
 - SMS OTP: Supabase Phone Auth + Twilio
 - Public/Admin Web Deploy: Vercel
 - Mobile Build: EAS Build

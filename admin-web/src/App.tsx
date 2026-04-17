@@ -17,19 +17,28 @@ import type {
 } from './types';
 
 const statusLabels: Record<ApplicationStatus, string> = {
-  applied: '신청 완료',
+  applied: '신청 확인중',
   waiting: '확정 대기',
-  confirmed: '수업 확정',
+  confirmed: '신청 완료',
   completed: '수업 완료',
   no_show: '미참여',
   canceled: '신청 취소',
 };
 
+const reviewPendingStatuses = new Set<ApplicationStatus>(['applied']);
+const completionReadyStatuses = new Set<ApplicationStatus>(['confirmed']);
 const activeStatuses = new Set<ApplicationStatus>([
   'applied',
   'waiting',
   'confirmed',
 ]);
+
+type AdminView =
+  | 'dashboard'
+  | 'applicationReview'
+  | 'completion'
+  | 'classes'
+  | 'deleteClasses';
 
 type CompletionForm = {
   completedAt: string;
@@ -512,9 +521,7 @@ function App() {
   const [filter, setFilter] = useState<
     'pending' | 'no_show' | 'completed' | 'all'
   >('pending');
-  const [view, setView] = useState<
-    'dashboard' | 'completion' | 'classes' | 'deleteClasses'
-  >('dashboard');
+  const [view, setView] = useState<AdminView>('dashboard');
 
   const selectedApplication = useMemo(
     () => applications.find((application) => application.id === selectedId) ?? null,
@@ -539,6 +546,11 @@ function App() {
     [existingPhotos, removedPhotoIds],
   );
 
+  const profilesById = useMemo(
+    () => new Map(profiles.map((item) => [item.id, item])),
+    [profiles],
+  );
+
   const overviewRows = useMemo(
     () => buildUserOverview(applications, children, profiles),
     [applications, children, profiles],
@@ -559,6 +571,12 @@ function App() {
       totalApplications: countedApplications.length,
       activeApplications: countedApplications.filter((application) =>
         activeStatuses.has(application.status),
+      ).length,
+      reviewPendingApplications: countedApplications.filter((application) =>
+        reviewPendingStatuses.has(application.status),
+      ).length,
+      confirmedApplications: countedApplications.filter((application) =>
+        completionReadyStatuses.has(application.status),
       ).length,
       noShowApplications: countedApplications.filter(
         (application) => application.status === 'no_show',
@@ -595,10 +613,20 @@ function App() {
 
     return sortApplicationsForOperation(
       countedApplications.filter((application) =>
-        activeStatuses.has(application.status),
+        completionReadyStatuses.has(application.status),
       ),
     );
   }, [applications, filter]);
+
+  const pendingReviewApplications = useMemo(
+    () =>
+      sortApplicationsForOperation(
+        applications.filter((application) =>
+          reviewPendingStatuses.has(application.status),
+        ),
+      ),
+    [applications],
+  );
 
   const openClasses = useMemo(() => {
     return classes
@@ -654,6 +682,12 @@ function App() {
       const activeCount = classApplications.filter((application) =>
         activeStatuses.has(application.status),
       ).length;
+      const reviewPendingCount = classApplications.filter((application) =>
+        reviewPendingStatuses.has(application.status),
+      ).length;
+      const confirmedCount = classApplications.filter((application) =>
+        completionReadyStatuses.has(application.status),
+      ).length;
       const completedCount = classApplications.filter(
         (application) => application.status === 'completed',
       ).length;
@@ -667,8 +701,10 @@ function App() {
       return {
         activeCount,
         canceledCount,
+        confirmedCount,
         completedCount,
         noShowCount,
+        reviewPendingCount,
         totalCount: classApplications.length,
       };
     },
@@ -679,7 +715,11 @@ function App() {
     (classItem: ClassRow) => {
       const summary = getClassSummary(classItem.id);
 
-      if (summary.activeCount > 0) return `${summary.activeCount}명 등록대기`;
+      if (summary.reviewPendingCount > 0) {
+        return `${summary.reviewPendingCount}명 확인중`;
+      }
+      if (summary.confirmedCount > 0) return `${summary.confirmedCount}명 신청완료`;
+      if (summary.activeCount > 0) return `${summary.activeCount}명 진행중`;
       if (summary.completedCount > 0 || summary.noShowCount > 0) {
         return `처리 완료 ${summary.completedCount + summary.noShowCount}건`;
       }
@@ -1082,6 +1122,60 @@ function App() {
     await loadDashboardData();
   };
 
+  const handleApproveApplication = async (application: ApplicationRow) => {
+    if (saving) return;
+
+    const shouldApprove = window.confirm(
+      `"${application.children?.full_name ?? '학생'}" 학생의 신청을 승인할까요?\n승인하면 학부모 앱에서 신청 완료로 표시됩니다.`,
+    );
+
+    if (!shouldApprove) return;
+
+    setSaving(true);
+    setMessage('');
+
+    const { error } = await supabase.rpc('admin_confirm_application', {
+      p_application_id: application.id,
+    });
+
+    setSaving(false);
+
+    if (error) {
+      setMessage(`신청을 승인하지 못했어요. ${error.message}`);
+      return;
+    }
+
+    setMessage('신청을 승인했어요. 학부모 앱에는 신청 완료로 반영됩니다.');
+    await loadDashboardData();
+  };
+
+  const handleCancelPendingApplication = async (application: ApplicationRow) => {
+    if (saving) return;
+
+    const shouldCancel = window.confirm(
+      `"${application.children?.full_name ?? '학생'}" 학생의 신청을 취소할까요?\n확인 중인 신청에서 내려가고, 학부모 앱에서도 신청내역에서 사라집니다.`,
+    );
+
+    if (!shouldCancel) return;
+
+    setSaving(true);
+    setMessage('');
+
+    const { error } = await supabase.rpc('admin_cancel_pending_application', {
+      p_application_id: application.id,
+    });
+
+    setSaving(false);
+
+    if (error) {
+      setMessage(`신청을 취소하지 못했어요. ${error.message}`);
+      return;
+    }
+
+    setMessage('확인 중인 신청을 취소했어요.');
+    await loadDashboardData();
+  };
+
   const handleDeleteClass = async (classItem: ClassRow) => {
     if (cancelingClassId || deletingClassId) return;
 
@@ -1180,6 +1274,14 @@ function App() {
     if (!selectedApplication) return;
     if (saving) return;
 
+    if (
+      selectedApplication.status === 'applied' ||
+      selectedApplication.status === 'waiting'
+    ) {
+      setMessage('신청 확인 탭에서 먼저 승인한 뒤 미참여 처리해 주세요.');
+      return;
+    }
+
     if (isClassInFuture(selectedApplication)) {
       const shouldContinue = window.confirm(
         `"${selectedApplication.classes?.title ?? '수업'}"은 아직 수업 시간이 지나지 않았어요.\n테스트가 아니라면 수업 후에 미참여 처리하는 게 안전합니다. 그래도 계속할까요?`,
@@ -1260,7 +1362,7 @@ function App() {
     if (saving) return;
 
     const shouldMarkPending = window.confirm(
-      `"${selectedApplication.children?.full_name ?? '학생'}" 학생의 신청을 등록대기로 되돌릴까요?`,
+      `"${selectedApplication.children?.full_name ?? '학생'}" 학생의 신청을 신청완료 상태로 되돌릴까요?`,
     );
 
     if (!shouldMarkPending) return;
@@ -1297,12 +1399,12 @@ function App() {
 
     const applicationResponse = await supabase
       .from('applications')
-      .update({ status: 'applied', updated_at: new Date().toISOString() })
+      .update({ status: 'confirmed', updated_at: new Date().toISOString() })
       .eq('id', selectedApplication.id);
 
     if (applicationResponse.error) {
       setSaving(false);
-      setMessage(`등록대기로 되돌리지 못했어요. ${applicationResponse.error.message}`);
+      setMessage(`신청완료로 되돌리지 못했어요. ${applicationResponse.error.message}`);
       return;
     }
 
@@ -1318,7 +1420,7 @@ function App() {
       if (openClassResponse.error) {
         setSaving(false);
         setMessage(
-          `등록대기로 되돌렸지만 지난 수업을 닫힌 상태로 유지하지 못했어요. ${openClassResponse.error.message}`,
+          `신청완료로 되돌렸지만 지난 수업을 닫힌 상태로 유지하지 못했어요. ${openClassResponse.error.message}`,
         );
         await loadDashboardData();
         return;
@@ -1337,7 +1439,7 @@ function App() {
       if (openClassResponse.error) {
         setSaving(false);
         setMessage(
-          `등록대기로 되돌렸지만 수업을 다시 열지 못했어요. ${openClassResponse.error.message}`,
+          `신청완료로 되돌렸지만 수업을 다시 열지 못했어요. ${openClassResponse.error.message}`,
         );
         await loadDashboardData();
         return;
@@ -1345,7 +1447,7 @@ function App() {
     }
 
     setSaving(false);
-    setMessage('등록대기로 되돌렸어요.');
+    setMessage('신청완료 상태로 되돌렸어요.');
     await loadDashboardData();
   };
 
@@ -1505,6 +1607,14 @@ function App() {
 
     if (!selectedApplication) return;
     if (saving) return;
+
+    if (
+      selectedApplication.status === 'applied' ||
+      selectedApplication.status === 'waiting'
+    ) {
+      setMessage('신청 확인 탭에서 먼저 승인한 뒤 완료수업으로 등록해 주세요.');
+      return;
+    }
 
     if (visibleExistingPhotos.length + photoPreviews.length > maxCompletionPhotoCount) {
       setMessage(`사진은 최대 ${maxCompletionPhotoCount}장까지 올릴 수 있어요.`);
@@ -1706,6 +1816,15 @@ function App() {
           전체 현황
         </button>
         <button
+          className={view === 'applicationReview' ? 'active' : ''}
+          onClick={() => setView('applicationReview')}
+        >
+          신청 확인
+          {pendingReviewApplications.length > 0 ? (
+            <span className="tab-count">{pendingReviewApplications.length}</span>
+          ) : null}
+        </button>
+        <button
           className={view === 'completion' ? 'active' : ''}
           onClick={() => setView('completion')}
         >
@@ -1740,8 +1859,12 @@ function App() {
                 전체 신청
               </div>
               <div>
-                <span>{dashboardStats.activeApplications}</span>
-                등록 대기
+                <span>{dashboardStats.reviewPendingApplications}</span>
+                신청 확인
+              </div>
+              <div>
+                <span>{dashboardStats.confirmedApplications}</span>
+                신청 완료
               </div>
               <div>
                 <span>{dashboardStats.noShowApplications}</span>
@@ -1832,6 +1955,103 @@ function App() {
             </div>
           </section>
         </>
+      ) : view === 'applicationReview' ? (
+        <>
+          <section className="summary-strip review-summary">
+            <div>
+              <span>{pendingReviewApplications.length}</span>
+              확인 대기
+            </div>
+            <div>
+              <span>{dashboardStats.confirmedApplications}</span>
+              신청 완료
+            </div>
+            <div>
+              <span>{dashboardStats.activeApplications}</span>
+              진행 중 전체
+            </div>
+          </section>
+
+          <section className="review-workspace">
+            <div className="application-list review-list-panel">
+              <div className="list-header">
+                <div>
+                  <h2>신청 확인</h2>
+                  <p>
+                    학부모가 신청한 내용을 확인한 뒤 신청완료로 승인해 주세요.
+                  </p>
+                </div>
+              </div>
+
+              {loading && <p className="muted">불러오는 중이에요.</p>}
+
+              <div className="review-card-list">
+                {pendingReviewApplications.map((application) => {
+                  const parent = profilesById.get(application.parent_id);
+
+                  return (
+                    <article className="review-card" key={application.id}>
+                      <div className="flag-box">
+                        {application.classes?.flag ?? '🌐'}
+                      </div>
+                      <div className="review-card-main">
+                        <div>
+                          <strong>
+                            {application.classes?.title ?? '수업 정보 없음'}
+                          </strong>
+                          <span>
+                            {application.classes?.country ?? '나라 정보 없음'} ·{' '}
+                            {application.classes?.campus ?? '학교 정보 없음'} ·{' '}
+                            {formatDateTime(application.classes?.starts_at ?? null)}
+                          </span>
+                        </div>
+                        <div className="review-meta-grid">
+                          <div>
+                            <small>학부모</small>
+                            <b>{formatPhone(parent?.phone)}</b>
+                          </div>
+                          <div>
+                            <small>학생</small>
+                            <b>{application.children?.full_name ?? '학생 정보 없음'}</b>
+                          </div>
+                          <div>
+                            <small>신청 시간</small>
+                            <b>{formatDateTime(application.created_at)}</b>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="review-actions">
+                        <span className={`status-badge ${application.status}`}>
+                          {statusLabels[application.status]}
+                        </span>
+                        <button
+                          className="approve-small-button"
+                          disabled={saving}
+                          onClick={() => handleApproveApplication(application)}
+                          type="button"
+                        >
+                          신청 승인
+                        </button>
+                        <button
+                          className="danger-small-button"
+                          disabled={saving}
+                          onClick={() => handleCancelPendingApplication(application)}
+                          type="button"
+                        >
+                          신청 취소
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+
+              {!loading && pendingReviewApplications.length === 0 && (
+                <p className="empty-text">확인할 신청이 없어요.</p>
+              )}
+            </div>
+          </section>
+        </>
       ) : view === 'completion' ? (
         <>
           <section className="summary-strip completion-summary">
@@ -1840,8 +2060,12 @@ function App() {
               전체 신청
             </div>
             <div>
-              <span>{dashboardStats.activeApplications}</span>
-              등록 대기
+              <span>{dashboardStats.reviewPendingApplications}</span>
+              신청 확인
+            </div>
+            <div>
+              <span>{dashboardStats.confirmedApplications}</span>
+              완료 등록 대기
             </div>
             <div>
               <span>{dashboardStats.noShowApplications}</span>
@@ -1872,7 +2096,7 @@ function App() {
                     )
                   }
                 >
-                  <option value="pending">등록 대기</option>
+                  <option value="pending">완료 등록 대기</option>
                   <option value="no_show">미참여</option>
                   <option value="completed">완료수업</option>
                   <option value="all">전체</option>
@@ -2078,11 +2302,17 @@ function App() {
                         onClick={handleMarkPending}
                         type="button"
                       >
-                        등록대기로 되돌리기
+                        신청완료로 되돌리기
                       </button>
                       <button
                         className="secondary-danger-button"
-                        disabled={saving || selectedApplication.status === 'no_show'}
+                        disabled={
+                          saving ||
+                          selectedApplication.status === 'no_show' ||
+                          selectedApplication.status === 'applied' ||
+                          selectedApplication.status === 'waiting' ||
+                          selectedApplication.status === 'canceled'
+                        }
                         onClick={handleMarkNoShow}
                         type="button"
                       >
@@ -2095,7 +2325,9 @@ function App() {
                         type="submit"
                         disabled={
                           saving ||
-                          selectedApplication.status === 'canceled'
+                          selectedApplication.status === 'canceled' ||
+                          selectedApplication.status === 'applied' ||
+                          selectedApplication.status === 'waiting'
                         }
                       >
                         {saving

@@ -22,10 +22,21 @@ functions/  Supabase Edge Functions
 ## Important Functions
 
 - `apply_to_class(p_child_id, p_class_id)`: 학부모 앱의 신청 RPC
+- `admin_confirm_application(p_application_id)`: 운영진 신청 승인 RPC
+- `admin_cancel_pending_application(p_application_id)`: 운영진 확인중 신청 취소 RPC
 - `admin_cancel_class(p_class_id)`: 운영진 수업 취소 RPC
 - `admin_delete_class(p_class_id)`: 운영진 테스트 수업 완전 삭제 RPC
 - `is_phone_registered(p_phone)`: 회원가입 중 전화번호 중복 확인
 - `get_active_application_count(p_class_id)`: 자리 수 계산용 신청 수 조회
+
+## Application Status Flow
+
+- `applied`: 학부모가 신청했고 운영진 확인을 기다리는 상태입니다. 자리 수에는 포함됩니다.
+- `confirmed`: 운영진이 승인한 신청 완료 상태입니다. 완료문화 등록 대상입니다.
+- `waiting`: 향후 대기/결제 흐름을 위해 남겨둔 상태입니다.
+- `completed`: 완료문화와 스탬프에 반영된 상태입니다.
+- `no_show`: 미참여 상태입니다.
+- `canceled`: 신청 취소 상태입니다.
 
 ## Edge Functions
 

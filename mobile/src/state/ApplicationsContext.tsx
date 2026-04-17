@@ -32,15 +32,15 @@ type ApplicationRow = {
 };
 
 const activeApplicationStatuses = new Set<ApplicationItem['status']>([
+  '신청 확인중',
   '신청 완료',
   '확정 대기',
-  '수업 확정',
 ]);
 
 const statusMap: Record<ApplicationRow['status'], ApplicationItem['status']> = {
-  applied: '신청 완료',
+  applied: '신청 확인중',
   waiting: '확정 대기',
-  confirmed: '수업 확정',
+  confirmed: '신청 완료',
   completed: '수업 완료',
   no_show: '미참여',
   canceled: '신청 취소',

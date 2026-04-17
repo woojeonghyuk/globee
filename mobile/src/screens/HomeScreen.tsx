@@ -23,7 +23,14 @@ function getCampusLabel(campus: string) {
 }
 
 function isActiveApplicationStatus(status: string) {
-  return status === '신청 완료' || status === '확정 대기' || status === '수업 확정';
+  return status === '신청 확인중' || status === '신청 완료' || status === '확정 대기';
+}
+
+function getApplicationBadgeLabel(childName: string, status: string) {
+  if (status === '신청 확인중') return `${childName} 확인중`;
+  if (status === '확정 대기') return `${childName} 대기중`;
+
+  return `${childName} 신청완료`;
 }
 
 function getClassSortTime(classItem: ClassItem) {
@@ -110,16 +117,25 @@ export default function HomeScreen() {
     selectedChildIds.includes(child.id),
   );
 
-  const getAppliedChildNames = useCallback(
+  const getActiveApplicationsForClass = useCallback(
     (classId: string) =>
       applications
         .filter(
           (application) =>
             application.classId === classId &&
             isActiveApplicationStatus(application.status),
-        )
-        .map((application) => application.childName)
-        .filter(Boolean),
+        ),
+    [applications],
+  );
+
+  const getChildActiveApplication = useCallback(
+    (classId: string, childId: string) =>
+      applications.find(
+        (application) =>
+          application.classId === classId &&
+          application.childId === childId &&
+          isActiveApplicationStatus(application.status),
+      ),
     [applications],
   );
 
@@ -164,15 +180,22 @@ export default function HomeScreen() {
 
   const getAppliedBadges = useCallback(
     (classId: string) => {
-      const names = Array.from(new Set(getAppliedChildNames(classId)));
+      const badges = getActiveApplicationsForClass(classId)
+        .filter((application) => application.childName)
+        .map((application) =>
+          getApplicationBadgeLabel(application.childName, application.status),
+        );
+      const uniqueBadges = Array.from(new Set(badges));
 
-      if (names.length <= 2) {
-        return names.map((name) => `${name} 신청완료`);
+      if (uniqueBadges.length <= 2) {
+        return uniqueBadges;
       }
 
-      return [`${names[0]}, ${names[1]} 외 ${names.length - 2}명 신청완료`];
+      return [
+        `${uniqueBadges[0]}, ${uniqueBadges[1]} 외 ${uniqueBadges.length - 2}명 신청중`,
+      ];
     },
-    [getAppliedChildNames],
+    [getActiveApplicationsForClass],
   );
 
   const openClassDetail = (classItem: ClassItem) => {
@@ -267,7 +290,7 @@ export default function HomeScreen() {
           classId: selectedClass.id,
           childId: child.id,
           childName: child.fullName,
-          status: '신청 완료',
+          status: '신청 확인중',
         });
 
         if (applied) {
@@ -290,7 +313,7 @@ export default function HomeScreen() {
           : message;
 
       Alert.alert(
-        appliedNames.length > 0 ? '일부 신청 완료' : '신청 실패',
+        appliedNames.length > 0 ? '일부 신청 확인중' : '신청 실패',
         partialMessage,
       );
       return;
@@ -305,8 +328,8 @@ export default function HomeScreen() {
     }
 
     Alert.alert(
-      '신청 완료',
-      `${appliedNames.join(', ')} 아이로 ${selectedClass.country} 수업을 신청했어요.${
+      '신청 확인중',
+      `${appliedNames.join(', ')} 아이의 ${selectedClass.country} 문화교류 신청을 보냈어요.\n운영진 확인 후 신청 완료로 바뀌어요.${
         skippedNames.length > 0
           ? `\n이미 신청된 아이: ${skippedNames.join(', ')}`
           : ''
@@ -413,9 +436,10 @@ export default function HomeScreen() {
             <View style={styles.childChipRow}>
               {children.map((child) => {
                 const isActive = selectedChildIds.includes(child.id);
-                const alreadyApplied = selectedClass
-                  ? hasActiveApplication(selectedClass.id, child.id)
-                  : false;
+                const activeApplication = selectedClass
+                  ? getChildActiveApplication(selectedClass.id, child.id)
+                  : undefined;
+                const alreadyApplied = Boolean(activeApplication);
 
                 return (
                   <Pressable
@@ -436,7 +460,10 @@ export default function HomeScreen() {
                       ]}
                     >
                       {alreadyApplied
-                        ? `${child.fullName} 신청완료`
+                        ? getApplicationBadgeLabel(
+                            child.fullName,
+                            activeApplication?.status ?? '신청 완료',
+                          )
                         : child.fullName}
                     </Text>
                   </Pressable>

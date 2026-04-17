@@ -12,7 +12,24 @@ import { useClasses } from '@/src/state/ClassesContext';
 import { colors } from '@/src/theme/colors';
 
 function isActiveApplicationStatus(status: string) {
-  return status === '신청 완료' || status === '확정 대기' || status === '수업 확정';
+  return status === '신청 확인중' || status === '신청 완료' || status === '확정 대기';
+}
+
+function isPendingReviewStatus(status: string) {
+  return status === '신청 확인중';
+}
+
+function isConfirmedApplicationStatus(status: string) {
+  return status === '신청 완료' || status === '확정 대기';
+}
+
+function getApplicationBadge(application: ApplicationItem) {
+  const childName = application.childName || '아이';
+
+  if (application.status === '신청 확인중') return `${childName} 확인중`;
+  if (application.status === '확정 대기') return `${childName} 대기중`;
+
+  return `${childName} 신청완료`;
 }
 
 function getClassSortTime(classItem: ClassItem | undefined) {
@@ -29,7 +46,7 @@ export default function ApplicationsScreen() {
   const { getClassById } = useClasses();
   const [selectedApplication, setSelectedApplication] =
     useState<ApplicationItem | null>(null);
-  const activeApplications = useMemo(
+  const sortedActiveApplications = useMemo(
     () =>
       applications
         .filter((application) => isActiveApplicationStatus(application.status))
@@ -39,6 +56,20 @@ export default function ApplicationsScreen() {
             getClassSortTime(getClassById(second.classId)),
         ),
     [applications, getClassById],
+  );
+  const pendingApplications = useMemo(
+    () =>
+      sortedActiveApplications.filter((application) =>
+        isPendingReviewStatus(application.status),
+      ),
+    [sortedActiveApplications],
+  );
+  const confirmedApplications = useMemo(
+    () =>
+      sortedActiveApplications.filter((application) =>
+        isConfirmedApplicationStatus(application.status),
+      ),
+    [sortedActiveApplications],
   );
 
   const selectedClass = selectedApplication
@@ -146,27 +177,61 @@ export default function ApplicationsScreen() {
         <Text style={styles.title}>신청내역</Text>
       </View>
 
-      <SectionHeader title="진행 중인 신청" subtitle={`${activeApplications.length}개 신청`} />
+      {pendingApplications.length > 0 ? (
+        <>
+          <SectionHeader
+            title="확인 중인 신청"
+            subtitle="운영진이 신청 내용을 확인하고 있어요."
+          />
 
-      <View style={styles.list}>
-        {activeApplications.map((application) => {
-          const classItem = getClassById(application.classId);
-          if (!classItem) return null;
+          <View style={[styles.list, styles.pendingList]}>
+            {pendingApplications.map((application) => {
+              const classItem = getClassById(application.classId);
+              if (!classItem) return null;
 
-          return (
-            <ClassCard
-              key={application.id}
-              item={classItem}
-              badges={[`${application.childName || '아이'} 신청완료`]}
-              seatsFull={isClassFull(application.classId)}
-              seatsLabel={getSeatsLabel(application.classId)}
-              onPress={() => openApplicationDetail(application)}
-            />
-          );
-        })}
-      </View>
+              return (
+                <ClassCard
+                  key={application.id}
+                  item={classItem}
+                  badges={[getApplicationBadge(application)]}
+                  seatsFull={isClassFull(application.classId)}
+                  seatsLabel={getSeatsLabel(application.classId)}
+                  onPress={() => openApplicationDetail(application)}
+                />
+              );
+            })}
+          </View>
+        </>
+      ) : null}
 
-      {activeApplications.length === 0 ? (
+      {confirmedApplications.length > 0 || pendingApplications.length === 0 ? (
+        <>
+          <SectionHeader
+            title="신청 완료"
+            subtitle="참여가 확정된 문화교류예요."
+          />
+
+          <View style={styles.list}>
+            {confirmedApplications.map((application) => {
+              const classItem = getClassById(application.classId);
+              if (!classItem) return null;
+
+              return (
+                <ClassCard
+                  key={application.id}
+                  item={classItem}
+                  badges={[getApplicationBadge(application)]}
+                  seatsFull={isClassFull(application.classId)}
+                  seatsLabel={getSeatsLabel(application.classId)}
+                  onPress={() => openApplicationDetail(application)}
+                />
+              );
+            })}
+          </View>
+        </>
+      ) : null}
+
+      {sortedActiveApplications.length === 0 ? (
         <View style={styles.emptyCard}>
           <Text style={styles.emptyTitle}>아직 신청한 문화가 없어요</Text>
           <Text style={styles.emptyText}>홈에서 아이에게 맞는 문화를 찾아보세요.</Text>
@@ -221,6 +286,9 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: 14,
+  },
+  pendingList: {
+    marginBottom: 26,
   },
   appliedChildSection: {
     marginBottom: 18,
