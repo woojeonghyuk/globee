@@ -12,7 +12,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import ClassCard from '@/src/components/ClassCard';
 import ClassDetailSheet from '@/src/components/ClassDetailSheet';
 import ScreenShell from '@/src/components/ScreenShell';
-import { ClassItem } from '@/src/data/classes';
+import { ClassItem, fixedCampusOptions } from '@/src/data/classes';
 import { useApplications } from '@/src/state/ApplicationsContext';
 import { useClasses } from '@/src/state/ClassesContext';
 import { useChildProfiles } from '@/src/state/ChildProfilesContext';
@@ -41,7 +41,7 @@ function getClassSortTime(classItem: ClassItem) {
 
 export default function HomeScreen() {
   const { children } = useChildProfiles();
-  const { classes, errorMessage, isLoading, refreshClasses } = useClasses();
+  const { classes, errorMessage, refreshClasses } = useClasses();
   const {
     addApplication,
     applications,
@@ -51,7 +51,6 @@ export default function HomeScreen() {
   const [selectedCampus, setSelectedCampus] = useState('');
   const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
   const [selectedChildIds, setSelectedChildIds] = useState<string[]>([]);
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const hiddenCompletedClassIds = useMemo(
     () =>
@@ -72,20 +71,9 @@ export default function HomeScreen() {
     [classes, hiddenCompletedClassIds],
   );
 
-  const campusOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(visibleClasses.map((item) => item.campus).filter(Boolean)),
-      ),
-    [visibleClasses],
-  );
+  const campusOptions = fixedCampusOptions;
 
   useEffect(() => {
-    if (campusOptions.length === 0) {
-      setSelectedCampus('');
-      return;
-    }
-
     if (!campusOptions.includes(selectedCampus)) {
       setSelectedCampus(campusOptions[0]);
     }
@@ -108,20 +96,11 @@ export default function HomeScreen() {
       const intervalId = setInterval(() => {
         refreshClasses();
         refreshApplications();
-      }, 3000);
+      }, 10000);
 
       return () => clearInterval(intervalId);
     }, [refreshApplications, refreshClasses]),
   );
-
-  const handleRefresh = useCallback(async () => {
-    setIsRefreshing(true);
-    try {
-      await Promise.all([refreshClasses(), refreshApplications()]);
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [refreshApplications, refreshClasses]);
 
   const selectedChildren = children.filter((child) =>
     selectedChildIds.includes(child.id),
@@ -384,22 +363,7 @@ export default function HomeScreen() {
       <View style={styles.classSection}>
         <View style={styles.classHeader}>
           <Text style={styles.classHeaderTitle}>오늘의 여행가능한 곳</Text>
-          <View style={styles.classHeaderRight}>
-            <Text style={styles.classHeaderCount}>{filteredClasses.length}개</Text>
-            <Pressable
-              style={({ pressed }) => [
-                styles.refreshButton,
-                pressed && styles.pressed,
-                (isLoading || isRefreshing) && styles.refreshButtonDisabled,
-              ]}
-              onPress={handleRefresh}
-              disabled={isLoading || isRefreshing}
-            >
-              <Text style={styles.refreshButtonText}>
-                {isLoading || isRefreshing ? '확인중' : '새로고침'}
-              </Text>
-            </Pressable>
-          </View>
+          <Text style={styles.classHeaderCount}>{filteredClasses.length}개</Text>
         </View>
 
         {errorMessage ? (
@@ -480,7 +444,10 @@ export default function HomeScreen() {
                       styles.childChip,
                       isActive && styles.activeChildChip,
                       !isActive && styles.inactiveChildChip,
-                      alreadyApplied && styles.appliedChildChip,
+                      alreadyApplied &&
+                        (activeApplication?.status !== '신청 완료'
+                          ? styles.pendingChildChip
+                          : styles.appliedChildChip),
                     ]}
                     onPress={() => toggleChild(child.id)}
                   >
@@ -488,7 +455,10 @@ export default function HomeScreen() {
                       style={[
                         styles.childChipText,
                         isActive && styles.activeChildChipText,
-                        alreadyApplied && styles.appliedChildChipText,
+                        alreadyApplied &&
+                          (activeApplication?.status !== '신청 완료'
+                            ? styles.pendingChildChipText
+                            : styles.appliedChildChipText),
                       ]}
                     >
                       {alreadyApplied
@@ -595,27 +565,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '900',
   },
-  classHeaderRight: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
-  refreshButton: {
-    backgroundColor: 'rgba(255,255,255,0.72)',
-    borderColor: colors.line,
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-  },
-  refreshButtonDisabled: {
-    opacity: 0.56,
-  },
-  refreshButtonText: {
-    color: colors.navy,
-    fontSize: 12,
-    fontWeight: '900',
-  },
   cardList: {
     gap: 14,
   },
@@ -693,6 +642,11 @@ const styles = StyleSheet.create({
     borderColor: colors.mint,
     opacity: 1,
   },
+  pendingChildChip: {
+    backgroundColor: '#FFF1C7',
+    borderColor: '#F5D36B',
+    opacity: 1,
+  },
   childChipText: {
     color: colors.navy,
     fontSize: 13,
@@ -703,6 +657,9 @@ const styles = StyleSheet.create({
   },
   appliedChildChipText: {
     color: colors.green,
+  },
+  pendingChildChipText: {
+    color: '#9A6B00',
   },
   addChildChip: {
     paddingHorizontal: 14,

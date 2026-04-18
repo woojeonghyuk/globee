@@ -12,6 +12,20 @@ type ClassCardProps = {
   seatsLabel?: string;
 };
 
+function getStatusBadgeStyle(badge: string) {
+  if (badge.includes('확인중') || badge.includes('대기중')) {
+    return {
+      badge: styles.pendingStatusBadge,
+      text: styles.pendingStatusBadgeText,
+    };
+  }
+
+  return {
+    badge: styles.confirmedStatusBadge,
+    text: styles.confirmedStatusBadgeText,
+  };
+}
+
 export default function ClassCard({
   item,
   badges = [],
@@ -61,11 +75,17 @@ export default function ClassCard({
         </View>
         {badges.length > 0 ? (
           <View style={styles.badgeRow}>
-            {badges.map((badge) => (
-              <View key={badge} style={styles.statusBadge}>
-                <Text style={styles.statusBadgeText}>{badge}</Text>
-              </View>
-            ))}
+            {badges.map((badge) => {
+              const badgeStyle = getStatusBadgeStyle(badge);
+
+              return (
+                <View key={badge} style={[styles.statusBadge, badgeStyle.badge]}>
+                  <Text style={[styles.statusBadgeText, badgeStyle.text]}>
+                    {badge}
+                  </Text>
+                </View>
+              );
+            })}
           </View>
         ) : null}
       </View>
@@ -170,14 +190,24 @@ const styles = StyleSheet.create({
   },
   statusBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: colors.mint,
     borderRadius: 8,
     paddingHorizontal: 9,
     paddingVertical: 5,
   },
+  pendingStatusBadge: {
+    backgroundColor: '#FFF1C7',
+  },
+  confirmedStatusBadge: {
+    backgroundColor: colors.mint,
+  },
   statusBadgeText: {
-    color: colors.green,
     fontSize: 11,
     fontWeight: '900',
+  },
+  pendingStatusBadgeText: {
+    color: '#9A6B00',
+  },
+  confirmedStatusBadgeText: {
+    color: colors.green,
   },
 });

@@ -54,6 +54,13 @@ export type StampProgressItem = StampItem & {
   completedCount: number;
 };
 
+export const fixedCampusOptions = [
+  '서울과학기술대학교',
+  '광운대학교',
+  '서울여자대학교',
+  '삼육대학교',
+];
+
 export const stampItems: StampItem[] = [
   { id: '1', country: '멕시코', flag: '🇲🇽' },
   { id: '2', country: '우크라이나', flag: '🇺🇦' },

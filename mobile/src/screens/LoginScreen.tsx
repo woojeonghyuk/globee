@@ -56,7 +56,10 @@ export default function LoginScreen() {
 
     if (error) {
       setIsSubmitting(false);
-      Alert.alert('로그인 실패', error.message);
+      Alert.alert(
+        '로그인 실패',
+        '휴대폰 번호 또는 비밀번호가 맞지 않아요.\n다시 확인해주세요.',
+      );
       return;
     }
 

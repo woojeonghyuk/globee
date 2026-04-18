@@ -167,10 +167,17 @@ function createCompletionPhotoPath(completedClassId: string, file: File) {
   return `${completedClassId}/${Date.now()}-${randomId}-${safeName}`;
 }
 
+const campusOptions = [
+  '서울과학기술대학교',
+  '광운대학교',
+  '서울여자대학교',
+  '삼육대학교',
+];
+
 const initialClassForm: ClassForm = {
   title: '',
   country: '베트남',
-  campus: '서울과학기술대학교',
+  campus: campusOptions[0],
   teacherName: '',
   startsAt: '',
   description: '',
@@ -527,6 +534,7 @@ function App() {
     () => applications.find((application) => application.id === selectedId) ?? null,
     [applications, selectedId],
   );
+  const selectedApplicationId = selectedApplication?.id ?? null;
 
   const selectedCompletion = useMemo(
     () =>
@@ -758,8 +766,13 @@ function App() {
   }, []);
 
   const loadDashboardData = useCallback(
-    async (options: { clearMessage?: boolean } = {}) => {
-    setLoading(true);
+    async (options: { clearMessage?: boolean; silent?: boolean } = {}) => {
+    const shouldShowLoading = !options.silent;
+    const shouldShowErrors = !options.silent;
+
+    if (shouldShowLoading) {
+      setLoading(true);
+    }
     if (options.clearMessage) {
       setMessage('');
     }
@@ -785,33 +798,43 @@ function App() {
           .order('starts_at', { ascending: true }),
       ]);
 
-    setLoading(false);
+    if (shouldShowLoading) {
+      setLoading(false);
+    }
 
     if (applicationsResponse.error) {
-      setMessage(
-        `신청 목록을 불러오지 못했어요. ${applicationsResponse.error.message}`,
-      );
+      if (shouldShowErrors) {
+        setMessage(
+          `신청 목록을 불러오지 못했어요. ${applicationsResponse.error.message}`,
+        );
+      }
       return;
     }
 
     if (profilesResponse.error) {
-      setMessage(
-        `사용자 정보를 불러오지 못했어요. ${profilesResponse.error.message}`,
-      );
+      if (shouldShowErrors) {
+        setMessage(
+          `사용자 정보를 불러오지 못했어요. ${profilesResponse.error.message}`,
+        );
+      }
       return;
     }
 
     if (childrenResponse.error) {
-      setMessage(
-        `학생 정보를 불러오지 못했어요. ${childrenResponse.error.message}`,
-      );
+      if (shouldShowErrors) {
+        setMessage(
+          `학생 정보를 불러오지 못했어요. ${childrenResponse.error.message}`,
+        );
+      }
       return;
     }
 
     if (classesResponse.error) {
-      setMessage(
-        `수업 목록을 불러오지 못했어요. ${classesResponse.error.message}`,
-      );
+      if (shouldShowErrors) {
+        setMessage(
+          `수업 목록을 불러오지 못했어요. ${classesResponse.error.message}`,
+        );
+      }
       return;
     }
 
@@ -872,7 +895,7 @@ function App() {
       }
 
       refreshTimer = window.setTimeout(() => {
-        loadDashboardData();
+        loadDashboardData({ silent: true });
       }, 250);
     };
 
@@ -911,11 +934,11 @@ function App() {
       .subscribe();
 
     const handleFocus = () => {
-      loadDashboardData();
+      loadDashboardData({ silent: true });
     };
     window.addEventListener('focus', handleFocus);
     const intervalId = window.setInterval(() => {
-      loadDashboardData();
+      loadDashboardData({ silent: true });
     }, 15000);
 
     return () => {
@@ -947,7 +970,7 @@ function App() {
       return [];
     });
     setRemovedPhotoIds(new Set());
-  }, [selectedApplication]);
+  }, [selectedApplicationId]);
 
   useEffect(() => {
     return () => {
@@ -2354,8 +2377,7 @@ function App() {
                 <div>
                   <h2>수업 개설하기</h2>
                   <p>
-                    학교명을 입력하면 학부모 앱 홈 화면의 학교 선택에 자동으로
-                    추가돼요.
+                    학교는 강북권 4개 대학교 중에서 선택해 주세요.
                   </p>
                 </div>
               </div>
@@ -2451,7 +2473,7 @@ function App() {
 
                 <label>
                   대학교명
-                  <input
+                  <select
                     value={classForm.campus}
                     onChange={(event) =>
                       setClassForm((current) => ({
@@ -2459,8 +2481,13 @@ function App() {
                         campus: event.target.value,
                       }))
                     }
-                    placeholder="서울과학기술대학교"
-                  />
+                  >
+                    {campusOptions.map((campus) => (
+                      <option key={campus} value={campus}>
+                        {campus}
+                      </option>
+                    ))}
+                  </select>
                 </label>
 
                 <button className="primary-button" disabled={saving} type="submit">
