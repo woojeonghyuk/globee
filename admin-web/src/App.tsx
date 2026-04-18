@@ -636,6 +636,17 @@ function App() {
     [applications],
   );
 
+  const getPendingReviewApplicationsForClass = useCallback(
+    (classId: string, exceptApplicationId?: string) =>
+      applications.filter(
+        (application) =>
+          application.class_id === classId &&
+          application.id !== exceptApplicationId &&
+          reviewPendingStatuses.has(application.status),
+      ),
+    [applications],
+  );
+
   const openClasses = useMemo(() => {
     return classes
       .filter((classItem) => {
@@ -654,8 +665,8 @@ function App() {
             application.status === 'completed' || application.status === 'no_show',
         );
 
-        if (hasActiveApplications) return true;
         if (hasFinishedApplications) return false;
+        if (hasActiveApplications) return true;
 
         return true;
       })
@@ -1269,22 +1280,7 @@ function App() {
     await loadDashboardData();
   };
 
-  const closeClassIfNoPendingApplications = async (classId: string) => {
-    const { data, error } = await supabase
-      .from('applications')
-      .select('id')
-      .eq('class_id', classId)
-      .in('status', ['applied', 'waiting', 'confirmed'])
-      .limit(1);
-
-    if (error) {
-      return error.message;
-    }
-
-    if ((data ?? []).length > 0) {
-      return null;
-    }
-
+  const closeClassAfterFinalization = async (classId: string) => {
     const closeClassResponse = await supabase
       .from('classes')
       .update({ is_open: false, updated_at: new Date().toISOString() })
@@ -1302,6 +1298,19 @@ function App() {
       selectedApplication.status === 'waiting'
     ) {
       setMessage('신청 확인 탭에서 먼저 승인한 뒤 미참여 처리해 주세요.');
+      return;
+    }
+
+    const pendingReviewApplicationsForClass =
+      getPendingReviewApplicationsForClass(
+        selectedApplication.class_id,
+        selectedApplication.id,
+      );
+
+    if (pendingReviewApplicationsForClass.length > 0) {
+      setMessage(
+        `같은 수업에 확인중인 신청 ${pendingReviewApplicationsForClass.length}건이 남아 있어요. 신청 확인 탭에서 먼저 승인 또는 신청 취소를 해주세요.`,
+      );
       return;
     }
 
@@ -1361,7 +1370,7 @@ function App() {
     }
 
     if (selectedApplication.class_id) {
-      const closeClassError = await closeClassIfNoPendingApplications(
+      const closeClassError = await closeClassAfterFinalization(
         selectedApplication.class_id,
       );
 
@@ -1639,6 +1648,19 @@ function App() {
       return;
     }
 
+    const pendingReviewApplicationsForClass =
+      getPendingReviewApplicationsForClass(
+        selectedApplication.class_id,
+        selectedApplication.id,
+      );
+
+    if (pendingReviewApplicationsForClass.length > 0) {
+      setMessage(
+        `같은 수업에 확인중인 신청 ${pendingReviewApplicationsForClass.length}건이 남아 있어요. 신청 확인 탭에서 먼저 승인 또는 신청 취소를 해주세요.`,
+      );
+      return;
+    }
+
     if (visibleExistingPhotos.length + photoPreviews.length > maxCompletionPhotoCount) {
       setMessage(`사진은 최대 ${maxCompletionPhotoCount}장까지 올릴 수 있어요.`);
       return;
@@ -1733,7 +1755,7 @@ function App() {
     }
 
     if (selectedApplication.class_id) {
-      const closeClassError = await closeClassIfNoPendingApplications(
+      const closeClassError = await closeClassAfterFinalization(
         selectedApplication.class_id,
       );
 
