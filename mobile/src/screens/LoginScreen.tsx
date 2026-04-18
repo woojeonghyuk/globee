@@ -103,6 +103,8 @@ export default function LoginScreen() {
                 placeholderTextColor={colors.muted}
                 keyboardType="phone-pad"
                 style={styles.input}
+                textContentType="telephoneNumber"
+                autoComplete="tel"
               />
             </View>
 
@@ -115,6 +117,11 @@ export default function LoginScreen() {
                 placeholderTextColor={colors.muted}
                 secureTextEntry
                 style={styles.input}
+                maxLength={20}
+                textContentType="password"
+                autoComplete="password"
+                autoCapitalize="none"
+                autoCorrect={false}
               />
             </View>
 
@@ -223,7 +230,7 @@ const styles = StyleSheet.create({
     fontSize: 26,
     lineHeight: 30,
     fontWeight: '900',
-    letterSpacing: -0.5,
+    letterSpacing: 0,
     textAlign: 'center',
     marginBottom: 10,
   },
@@ -271,7 +278,7 @@ const styles = StyleSheet.create({
     color: colors.navy,
     fontSize: 18,
     fontWeight: '900',
-    letterSpacing: -0.3,
+    letterSpacing: 0,
   },
 
   footerArea: {

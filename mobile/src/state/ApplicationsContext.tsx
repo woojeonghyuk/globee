@@ -68,11 +68,9 @@ async function notifyNewApplication(applicationId: string) {
       },
     });
 
-    if (error) {
-      console.warn('Failed to send KakaoWork notification.', error.message);
-    }
-  } catch (error) {
-    console.warn('Failed to send KakaoWork notification.', error);
+    if (error) return;
+  } catch {
+    // 신청 저장은 완료된 상태이므로 운영진 알림 실패는 사용자 흐름을 막지 않는다.
   }
 }
 

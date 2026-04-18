@@ -1,4 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.103.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -36,6 +36,15 @@ type ProfileRow = {
   phone: string | null;
 };
 
+type NotificationRecord = {
+  id: string;
+  status: 'sending' | 'sent' | 'failed';
+  attempts: number | null;
+  updated_at: string | null;
+};
+
+type SupabaseAdminClient = ReturnType<typeof createClient>;
+
 function jsonResponse(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -60,6 +69,8 @@ function formatPhone(phone: string | null | undefined) {
   if (!phone) return '미등록';
 
   const digits = phone.replace(/\D/g, '');
+  if (!digits) return '미등록';
+
   let localPhone = digits;
 
   if (digits.startsWith('82')) {
@@ -75,6 +86,134 @@ function formatPhone(phone: string | null | undefined) {
   }
 
   return phone;
+}
+
+function isMissingNotificationTable(error: { code?: string; message?: string } | null) {
+  return (
+    error?.code === '42P01' ||
+    Boolean(error?.message?.includes('application_notifications'))
+  );
+}
+
+async function beginNotificationAttempt(
+  adminClient: SupabaseAdminClient,
+  applicationId: string,
+) {
+  const notificationType = 'new_application';
+  const { data, error } = await adminClient
+    .from('application_notifications')
+    .select('id,status,attempts,updated_at')
+    .eq('application_id', applicationId)
+    .eq('notification_type', notificationType)
+    .maybeSingle();
+
+  if (error) {
+    if (isMissingNotificationTable(error)) {
+      return { enabled: false, notificationId: null, shouldSend: true };
+    }
+
+    throw error;
+  }
+
+  const existing = data as NotificationRecord | null;
+
+  if (existing?.status === 'sent') {
+    return { enabled: true, notificationId: existing.id, shouldSend: false };
+  }
+
+  if (existing?.status === 'sending' && existing.updated_at) {
+    const updatedAt = new Date(existing.updated_at).getTime();
+    const isRecentAttempt =
+      !Number.isNaN(updatedAt) && Date.now() - updatedAt < 2 * 60 * 1000;
+
+    if (isRecentAttempt) {
+      return { enabled: true, notificationId: existing.id, shouldSend: false };
+    }
+  }
+
+  const nextAttemptCount = (existing?.attempts ?? 0) + 1;
+  const payload = {
+    application_id: applicationId,
+    notification_type: notificationType,
+    status: 'sending',
+    attempts: nextAttemptCount,
+    error_message: null,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (existing) {
+    const { data: updatedData, error: updateError } = await adminClient
+      .from('application_notifications')
+      .update(payload)
+      .eq('id', existing.id)
+      .select('id')
+      .single();
+
+    if (updateError) throw updateError;
+
+    return {
+      enabled: true,
+      notificationId: updatedData.id as string,
+      shouldSend: true,
+    };
+  }
+
+  const { data: insertedData, error: insertError } = await adminClient
+    .from('application_notifications')
+    .insert(payload)
+    .select('id')
+    .single();
+
+  if (insertError) {
+    if (insertError.code === '23505') {
+      return { enabled: true, notificationId: null, shouldSend: false };
+    }
+
+    throw insertError;
+  }
+
+  return {
+    enabled: true,
+    notificationId: insertedData.id as string,
+    shouldSend: true,
+  };
+}
+
+async function markNotificationSent(
+  adminClient: SupabaseAdminClient,
+  notificationId: string | null,
+) {
+  if (!notificationId) return;
+
+  await adminClient
+    .from('application_notifications')
+    .update({
+      status: 'sent',
+      error_message: null,
+      sent_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', notificationId);
+}
+
+async function markNotificationFailed(
+  adminClient: SupabaseAdminClient,
+  notificationId: string | null,
+  error: unknown,
+) {
+  if (!notificationId) return;
+
+  const errorMessage =
+    error instanceof Error ? error.message : 'Unknown notification error';
+
+  await adminClient
+    .from('application_notifications')
+    .update({
+      status: 'failed',
+      error_message: errorMessage.slice(0, 1000),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', notificationId);
 }
 
 function formatKoreanDate(value: string | null | undefined) {
@@ -241,6 +380,24 @@ Deno.serve(async (req) => {
 
   const child = firstOrNull(application.children);
   const classRow = firstOrNull(application.classes);
+
+  if (!child || !classRow) {
+    return jsonResponse({ ok: true, skipped: true });
+  }
+
+  let notificationAttempt;
+
+  try {
+    notificationAttempt = await beginNotificationAttempt(adminClient, application.id);
+  } catch (error) {
+    console.error(error);
+    return jsonResponse({ error: 'Failed to prepare notification.' }, 500);
+  }
+
+  if (!notificationAttempt.shouldSend) {
+    return jsonResponse({ ok: true, skipped: true });
+  }
+
   const parentProfile = parentProfileData as ProfileRow | null;
   const parentPhone = formatPhone(parentProfile?.phone ?? user.phone);
   const seatsTotal = classRow?.seats_total ?? 6;
@@ -278,8 +435,17 @@ Deno.serve(async (req) => {
 
   try {
     await sendKakaoWorkMessage(kakaoWorkWebhookUrl, fallbackText, blocks);
+    await markNotificationSent(
+      adminClient,
+      notificationAttempt.enabled ? notificationAttempt.notificationId : null,
+    );
   } catch (error) {
     console.error(error);
+    await markNotificationFailed(
+      adminClient,
+      notificationAttempt.enabled ? notificationAttempt.notificationId : null,
+      error,
+    );
     return jsonResponse({ error: 'Failed to send KakaoWork notification.' }, 502);
   }
 

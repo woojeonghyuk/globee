@@ -17,6 +17,7 @@ functions/  Supabase Edge Functions
 - `applications`: 아이별 신청 상태
 - `completed_classes`: 완료문화 기록과 선생님 코멘트
 - `completed_class_photos`: 완료문화 사진 메타데이터
+- `application_notifications`: 운영진 알림 발송 기록과 중복 발송 방지
 - `stamp_countries`: 스탬프 국가 목록
 
 ## Important Functions
@@ -28,6 +29,7 @@ functions/  Supabase Edge Functions
 - `admin_delete_class(p_class_id)`: 운영진 테스트 수업 완전 삭제 RPC
 - `is_phone_registered(p_phone)`: 회원가입 중 전화번호 중복 확인
 - `get_active_application_count(p_class_id)`: 자리 수 계산용 신청 수 조회
+- `has_pending_review_applications_for_class(p_class_id, p_excluded_application_id)`: 완료문화/미참여 처리 전 확인중 신청 존재 여부 확인
 
 ## Application Status Flow
 
@@ -51,6 +53,18 @@ npx supabase functions deploy notify-new-application --project-ref emuvubzjxdfdo
 ```
 
 `notify-new-application`은 `KAKAOWORK_WEBHOOK_URL` Supabase Secret이 필요합니다.
+`application_notifications` 테이블이 있으면 같은 신청에 대한 카카오워크 알림 중복 발송을 막습니다.
+
+## Release SQL Order
+
+최근 변경을 반영할 때는 SQL Editor에서 아래 파일을 실행합니다.
+
+```text
+supabase/sql/20260418_application_notifications.sql
+supabase/sql/20260418_harden_admin_delete_class.sql
+supabase/sql/20260418_close_class_on_first_finalized_application.sql
+supabase/sql/20260418_harden_finalization_workflow.sql
+```
 
 ## Security Notes
 

@@ -15,6 +15,10 @@ import { router } from 'expo-router';
 
 import BrandWordmark from '@/src/components/BrandWordmark';
 import {
+  getOtpVerificationErrorMessage,
+  getPasswordUpdateErrorMessage,
+} from '@/src/lib/authMessages';
+import {
   formatKoreanPhoneInput,
   getPasswordValidationError,
   isValidKoreanPhone,
@@ -87,6 +91,29 @@ export default function ResetPasswordScreen() {
     setIsSubmitting(true);
 
     const normalizedPhone = normalizeKoreanPhone(phone);
+    const { data: isRegistered, error: registrationCheckError } =
+      await supabase.rpc('is_phone_registered', {
+        p_phone: normalizedPhone,
+      });
+
+    if (registrationCheckError) {
+      setIsSubmitting(false);
+      Alert.alert(
+        '가입 확인 실패',
+        '전화번호 가입 여부를 확인하지 못했어요. 잠시 후 다시 시도해주세요.',
+      );
+      return;
+    }
+
+    if (!isRegistered) {
+      setIsSubmitting(false);
+      Alert.alert(
+        '가입된 번호가 아니에요',
+        '회원가입한 전화번호인지 확인해주세요.',
+      );
+      return;
+    }
+
     const { error } = await requestResetOtp(normalizedPhone);
 
     if (error) {
@@ -134,7 +161,7 @@ export default function ResetPasswordScreen() {
 
     if (error) {
       setIsSubmitting(false);
-      Alert.alert('인증 실패', error.message);
+      Alert.alert('인증 실패', getOtpVerificationErrorMessage(error.message));
       return;
     }
 
@@ -187,7 +214,7 @@ export default function ResetPasswordScreen() {
 
     if (updateError) {
       setIsSubmitting(false);
-      Alert.alert('변경 실패', updateError.message);
+      Alert.alert('변경 실패', getPasswordUpdateErrorMessage(updateError.message));
       return;
     }
 
@@ -265,6 +292,7 @@ export default function ResetPasswordScreen() {
                 editable={step === 'phone' && !isSubmitting}
                 style={styles.input}
                 textContentType="telephoneNumber"
+                autoComplete="tel"
               />
             </View>
 
@@ -281,6 +309,7 @@ export default function ResetPasswordScreen() {
                   editable={step === 'code' && !isSubmitting}
                   style={styles.input}
                   textContentType="oneTimeCode"
+                  autoComplete="sms-otp"
                 />
                 {step === 'code' && (
                   <View style={styles.codeMetaRow}>
@@ -327,6 +356,8 @@ export default function ResetPasswordScreen() {
                     maxLength={20}
                     style={styles.input}
                     textContentType="newPassword"
+                    autoCapitalize="none"
+                    autoCorrect={false}
                   />
                 </View>
 
@@ -341,6 +372,8 @@ export default function ResetPasswordScreen() {
                     maxLength={20}
                     style={styles.input}
                     textContentType="newPassword"
+                    autoCapitalize="none"
+                    autoCorrect={false}
                   />
                 </View>
               </>
@@ -433,7 +466,7 @@ const styles = StyleSheet.create({
     fontSize: 26,
     lineHeight: 30,
     fontWeight: '900',
-    letterSpacing: -0.5,
+    letterSpacing: 0,
     textAlign: 'center',
     marginBottom: 10,
   },
@@ -506,7 +539,7 @@ const styles = StyleSheet.create({
     color: colors.navy,
     fontSize: 18,
     fontWeight: '900',
-    letterSpacing: -0.3,
+    letterSpacing: 0,
   },
   footerArea: {
     alignItems: 'center',

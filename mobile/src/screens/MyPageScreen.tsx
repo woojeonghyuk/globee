@@ -18,7 +18,9 @@ import { router } from 'expo-router';
 import ScreenShell from '@/src/components/ScreenShell';
 import { ChildProfile } from '@/src/data/classes';
 import { supabase, supabaseAnonKey, supabaseUrl } from '@/src/lib/supabase';
+import { useApplications } from '@/src/state/ApplicationsContext';
 import { useChildProfiles } from '@/src/state/ChildProfilesContext';
+import { useCompletedRecords } from '@/src/state/CompletedRecordsContext';
 import { colors } from '@/src/theme/colors';
 
 type FormState = {
@@ -41,8 +43,32 @@ const emptyForm: FormState = {
   gender: 'boy',
 };
 
+const activeApplicationStatuses = new Set([
+  '신청 확인중',
+  '신청 완료',
+  '확정 대기',
+]);
+
 function normalizeChildName(value: string) {
   return value.replace(/\s/g, '').toLowerCase();
+}
+
+function getDeleteAccountErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : '';
+
+  if (message.includes('세션') || message.toLowerCase().includes('session')) {
+    return '로그인 세션이 만료됐어요. 다시 로그인한 뒤 시도해주세요.';
+  }
+
+  if (message.toLowerCase().includes('parent')) {
+    return '학부모 계정만 앱에서 탈퇴할 수 있어요.';
+  }
+
+  if (/[가-힣]/.test(message)) {
+    return message;
+  }
+
+  return '계정을 삭제하지 못했어요. 잠시 후 다시 시도해주세요.';
 }
 
 export default function MyPageScreen() {
@@ -52,6 +78,8 @@ export default function MyPageScreen() {
     updateChild,
     deleteChild,
   } = useChildProfiles();
+  const { applications } = useApplications();
+  const { completedRecords } = useCompletedRecords();
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -197,6 +225,32 @@ export default function MyPageScreen() {
   const handleDelete = () => {
     if (!selectedChildId) return;
 
+    const hasActiveApplication = applications.some(
+      (application) =>
+        application.childId === selectedChildId &&
+        activeApplicationStatuses.has(application.status),
+    );
+
+    if (hasActiveApplication) {
+      Alert.alert(
+        '진행 중인 신청이 있어요',
+        '이 아이의 확인 중이거나 신청 완료된 문화교류가 있어요. 먼저 신청내역에서 취소하거나 운영진 처리 후 삭제해주세요.',
+      );
+      return;
+    }
+
+    const hasCompletedRecord = completedRecords.some(
+      (record) => record.childId === selectedChildId,
+    );
+
+    if (hasCompletedRecord) {
+      Alert.alert(
+        '완료문화 기록이 있어요',
+        '이 아이의 완료문화와 스탬프 기록이 있어서 앱에서 바로 삭제할 수 없어요. 기록 정리가 필요하면 운영진에게 문의해주세요.',
+      );
+      return;
+    }
+
     Alert.alert('아이 정보 삭제', '이 아이 정보를 삭제할까요?', [
       { text: '취소', style: 'cancel' },
       {
@@ -276,9 +330,7 @@ export default function MyPageScreen() {
     } catch (error) {
       Alert.alert(
         '회원 탈퇴 실패',
-        error instanceof Error
-          ? error.message
-          : '계정을 삭제하지 못했어요. 잠시 후 다시 시도해주세요.',
+        getDeleteAccountErrorMessage(error),
       );
     } finally {
       setIsDeletingAccount(false);
@@ -290,7 +342,7 @@ export default function MyPageScreen() {
 
     Alert.alert(
       '회원 탈퇴',
-      '계정과 등록한 아이 정보, 신청 내역, 완료수업 기록이 삭제됩니다. 삭제 후에는 되돌릴 수 없어요.',
+      '계정과 등록한 아이 정보, 신청 내역, 완료문화 기록이 삭제됩니다. 삭제 후에는 되돌릴 수 없어요.',
       [
         { text: '취소', style: 'cancel' },
         {
@@ -560,7 +612,7 @@ export default function MyPageScreen() {
                   <TextInput
                     value={form.note}
                     onChangeText={(value) => updateForm('note', value)}
-                    placeholder="예: 활동적인 수업과 그림 그리기를 좋아해요. 영어를 잘 못해도 말을 많이 걸어요. 낯을 많이 가려요"
+                    placeholder="예: 활동적인 문화교류와 그림 그리기를 좋아해요. 영어를 잘 못해도 말을 많이 걸어요. 낯을 많이 가려요"
                     placeholderTextColor="#9BA6BF"
                     multiline
                     style={[getInputStyle('note'), styles.textarea]}
@@ -600,7 +652,7 @@ const styles = StyleSheet.create({
     color: colors.navy,
     fontSize: 30,
     fontWeight: '900',
-    letterSpacing: -0.8,
+    letterSpacing: 0,
   },
   childList: {
     gap: 14,

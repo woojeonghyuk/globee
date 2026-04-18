@@ -239,7 +239,11 @@ export function CompletedRecordsProvider({
         data: { user },
       } = await supabase.auth.getUser();
 
-      if (!user) return;
+      if (!user) {
+        setCompletedRecords([]);
+        setStampCountries([]);
+        return;
+      }
 
       const [completedResponse, stampCountriesResponse] = await Promise.all([
         supabase

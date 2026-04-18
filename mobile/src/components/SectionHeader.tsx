@@ -25,7 +25,7 @@ const styles = StyleSheet.create({
     color: colors.navy,
     fontSize: 22,
     fontWeight: '900',
-    letterSpacing: -0.5,
+    letterSpacing: 0,
   },
   subtitle: {
     color: colors.muted,

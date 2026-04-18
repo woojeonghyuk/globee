@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
     color: colors.navy,
     fontSize: 32,
     fontWeight: '900',
-    letterSpacing: -0.8,
+    letterSpacing: 0,
     marginBottom: 8,
   },
   subtitle: {
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     color: colors.navy,
     fontSize: 24,
     fontWeight: '900',
-    letterSpacing: -0.6,
+    letterSpacing: 0,
   },
   stampGrid: {
     flexDirection: 'row',

@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
     color: colors.navy,
     fontSize: 32,
     fontWeight: '900',
-    letterSpacing: -0.8,
+    letterSpacing: 0,
   },
   list: {
     gap: 14,

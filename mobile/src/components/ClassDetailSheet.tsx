@@ -68,7 +68,7 @@ export default function ClassDetailSheet({
 
               <View style={styles.infoBox}>
                 <View style={styles.infoItem}>
-                  <Text style={styles.infoLabel}>수업 날짜</Text>
+                  <Text style={styles.infoLabel}>일시</Text>
                   <Text style={styles.infoText}>{classItem.schedule}</Text>
                 </View>
                 <View style={[styles.infoItem, styles.capacityItem]}>

@@ -20,7 +20,7 @@ const statusLabels: Record<ApplicationStatus, string> = {
   applied: '신청 확인중',
   waiting: '확정 대기',
   confirmed: '신청 완료',
-  completed: '수업 완료',
+  completed: '완료문화',
   no_show: '미참여',
   canceled: '신청 취소',
 };
@@ -129,6 +129,7 @@ const allowedCompletionPhotoTypes = new Set([
   'image/png',
   'image/webp',
 ]);
+const allowedCompletionPhotoExtensions = new Set(['jpg', 'jpeg', 'png', 'webp']);
 
 type CompletedClassRecord = ReturnType<typeof getCompletedClasses>[number];
 
@@ -151,7 +152,7 @@ function getAllCompletedPhotos(value: CompletedClassValue) {
 }
 
 function getPendingReviewBlockMessage(count: number) {
-  return `같은 수업에 확인중인 신청 ${count}건이 남아 있어요. 신청 확인 탭에서 승인 또는 신청 취소를 모두 완료한 뒤 진행해 주세요.`;
+  return `같은 문화교류에 확인중인 신청 ${count}건이 남아 있어요. 신청 확인 탭에서 승인 또는 신청 취소를 모두 완료한 뒤 진행해 주세요.`;
 }
 
 function sanitizeStorageFileName(fileName: string) {
@@ -169,6 +170,27 @@ function createCompletionPhotoPath(completedClassId: string, file: File) {
       : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
   return `${completedClassId}/${Date.now()}-${randomId}-${safeName}`;
+}
+
+function getFileExtension(fileName: string) {
+  return fileName.split('.').pop()?.toLowerCase() ?? '';
+}
+
+function isAllowedCompletionPhoto(file: File) {
+  return (
+    allowedCompletionPhotoTypes.has(file.type) ||
+    allowedCompletionPhotoExtensions.has(getFileExtension(file.name))
+  );
+}
+
+function getCompletionPhotoContentType(file: File) {
+  if (allowedCompletionPhotoTypes.has(file.type)) return file.type;
+
+  const extension = getFileExtension(file.name);
+  if (extension === 'png') return 'image/png';
+  if (extension === 'webp') return 'image/webp';
+
+  return 'image/jpeg';
 }
 
 const campusOptions = [
@@ -272,7 +294,7 @@ function getClassDate(value: string | undefined) {
 function getCompletionTitle(application: ApplicationRow) {
   return `${getClassDate(application.classes?.starts_at)} ${
     application.children?.full_name ?? '학생'
-  } 수업 일지`;
+  } 문화 일지`;
 }
 
 function getApplicationTitlePreview(
@@ -552,6 +574,13 @@ function App() {
     () => getCompletedPhotos(selectedCompletion),
     [selectedCompletion],
   );
+  const existingPhotoSignature = useMemo(
+    () =>
+      existingPhotos
+        .map((photo) => `${photo.id}:${photo.storage_path}:${photo.sort_order}`)
+        .join('|'),
+    [existingPhotos],
+  );
 
   const visibleExistingPhotos = useMemo(
     () => existingPhotos.filter((photo) => !removedPhotoIds.has(photo.id)),
@@ -665,6 +694,30 @@ function App() {
       ? getPendingReviewBlockMessage(selectedPendingReviewApplications.length)
       : '';
 
+  const hasUnsavedCompletionDraft = useMemo(() => {
+    if (!selectedApplication) return false;
+
+    const existingCompletion = getCompletedClasses(
+      selectedApplication.completed_classes,
+    )[0];
+    const baseForm: CompletionForm = {
+      completedAt:
+        existingCompletion?.completed_at ??
+        selectedApplication.classes?.starts_at?.slice(0, 10) ??
+        initialCompletionForm.completedAt,
+      diary: existingCompletion?.diary ?? '',
+      teacherComment: existingCompletion?.teacher_comment ?? '',
+    };
+
+    return (
+      form.completedAt !== baseForm.completedAt ||
+      form.diary !== baseForm.diary ||
+      form.teacherComment !== baseForm.teacherComment ||
+      photoPreviews.length > 0 ||
+      removedPhotoIds.size > 0
+    );
+  }, [form, photoPreviews.length, removedPhotoIds.size, selectedApplication]);
+
   const openClasses = useMemo(() => {
     return classes
       .filter((classItem) => {
@@ -775,6 +828,11 @@ function App() {
 
     if (!user) {
       setProfile(null);
+      setApplications([]);
+      setProfiles([]);
+      setChildren([]);
+      setClasses([]);
+      setSelectedId(null);
       return;
     }
 
@@ -787,6 +845,11 @@ function App() {
     if (error || !data || data.role !== 'admin') {
       await supabase.auth.signOut();
       setProfile(null);
+      setApplications([]);
+      setProfiles([]);
+      setChildren([]);
+      setClasses([]);
+      setSelectedId(null);
       setLoginError('운영진 계정만 접속할 수 있어요.');
       return;
     }
@@ -861,7 +924,7 @@ function App() {
     if (classesResponse.error) {
       if (shouldShowErrors) {
         setMessage(
-          `수업 목록을 불러오지 못했어요. ${classesResponse.error.message}`,
+          `문화교류 목록을 불러오지 못했어요. ${classesResponse.error.message}`,
         );
       }
       return;
@@ -1045,7 +1108,22 @@ function App() {
     return () => {
       isActive = false;
     };
-  }, [existingPhotos]);
+  }, [existingPhotoSignature]);
+
+  const handleSelectApplication = (applicationId: string) => {
+    if (applicationId === selectedId) return;
+
+    if (hasUnsavedCompletionDraft) {
+      const shouldLeave = window.confirm(
+        '작성 중인 완료문화 내용이 있어요. 저장하지 않고 다른 신청을 볼까요?',
+      );
+
+      if (!shouldLeave) return;
+    }
+
+    setSelectedId(applicationId);
+    setMessage('');
+  };
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -1067,10 +1145,13 @@ function App() {
     setLoading(false);
 
     if (error) {
+      setPassword('');
       setLoginError('운영진 아이디 또는 비밀번호를 확인해 주세요.');
       return;
     }
 
+    setAdminId('');
+    setPassword('');
     await loadAdminProfile();
   };
 
@@ -1101,7 +1182,7 @@ function App() {
     ];
 
     if (requiredValues.some((value) => !value.trim())) {
-      setMessage('수업명, 나라, 학교, 선생님, 일정, 설명을 모두 입력해 주세요.');
+      setMessage('문화교류명, 나라, 학교, 선생님, 일정, 설명을 모두 입력해 주세요.');
       return;
     }
 
@@ -1110,7 +1191,7 @@ function App() {
       Number.isNaN(startsAtDate.getTime()) ||
       startsAtDate.getTime() <= Date.now()
     ) {
-      setMessage('수업 날짜와 시간은 현재 이후로 입력해 주세요.');
+      setMessage('문화교류 날짜와 시간은 현재 이후로 입력해 주세요.');
       return;
     }
 
@@ -1139,11 +1220,11 @@ function App() {
     setSaving(false);
 
     if (error) {
-      setMessage(`수업을 개설하지 못했어요. ${error.message}`);
+      setMessage(`문화교류를 개설하지 못했어요. ${error.message}`);
       return;
     }
 
-    setMessage('수업이 개설됐어요. 학부모 앱 홈 화면에 반영돼요.');
+    setMessage('문화교류가 개설됐어요. 학부모 앱 홈 화면에 반영돼요.');
     setClassForm(initialClassForm);
     await loadDashboardData();
   };
@@ -1152,7 +1233,7 @@ function App() {
     if (cancelingClassId || deletingClassId) return;
 
     const shouldCancel = window.confirm(
-      `"${classItem.title}" 수업을 취소할까요?\n학부모 앱 홈 화면에서는 더 이상 보이지 않고, 진행 중인 신청은 신청 취소 상태로 바뀝니다.`,
+      `"${classItem.title}" 문화교류를 취소할까요?\n학부모 앱 홈 화면에서는 더 이상 보이지 않고, 진행 중인 신청은 신청 취소 상태로 바뀝니다.`,
     );
 
     if (!shouldCancel) return;
@@ -1167,11 +1248,11 @@ function App() {
     setCancelingClassId(null);
 
     if (error) {
-      setMessage(`수업을 취소하지 못했어요. ${error.message}`);
+      setMessage(`문화교류를 취소하지 못했어요. ${error.message}`);
       return;
     }
 
-    setMessage('수업이 취소됐어요. 학부모 앱 홈 화면에서 내려갑니다.');
+    setMessage('문화교류가 취소됐어요. 학부모 앱 홈 화면에서 내려갑니다.');
     await loadDashboardData();
   };
 
@@ -1234,7 +1315,7 @@ function App() {
 
     const summary = getClassSummary(classItem.id);
     const shouldDelete = window.confirm(
-      `"${classItem.title}" 수업 데이터를 완전히 삭제할까요?\n\n연결된 신청 ${summary.totalCount}건, 완료 ${summary.completedCount}건, 미참여 ${summary.noShowCount}건이 함께 삭제됩니다.\n테스트 데이터 정리용 기능이며, 삭제 후 되돌릴 수 없어요.`,
+      `"${classItem.title}" 문화교류 데이터를 완전히 삭제할까요?\n\n연결된 신청 ${summary.totalCount}건, 완료 ${summary.completedCount}건, 미참여 ${summary.noShowCount}건이 함께 삭제됩니다.\n테스트 데이터 정리용 기능이며, 삭제 후 되돌릴 수 없어요.`,
     );
 
     if (!shouldDelete) return;
@@ -1278,7 +1359,7 @@ function App() {
     setDeletingClassId(null);
 
     if (deleteClassError) {
-      setMessage(`수업을 삭제하지 못했어요. ${deleteClassError.message}`);
+      setMessage(`문화교류를 삭제하지 못했어요. ${deleteClassError.message}`);
       return;
     }
 
@@ -1298,13 +1379,13 @@ function App() {
     const photoDeleteError = await removeCompletionPhotoFiles(photosToDelete);
     if (photoDeleteError) {
       setMessage(
-        `수업 데이터는 삭제했지만 사진 파일 일부를 정리하지 못했어요. ${photoDeleteError}`,
+        `문화교류 데이터는 삭제했지만 사진 파일 일부를 정리하지 못했어요. ${photoDeleteError}`,
       );
       await loadDashboardData();
       return;
     }
 
-    setMessage('수업과 연결된 테스트 데이터를 완전히 삭제했어요.');
+    setMessage('문화교류와 연결된 테스트 데이터를 완전히 삭제했어요.');
     await loadDashboardData();
   };
 
@@ -1347,7 +1428,7 @@ function App() {
 
     if (isClassInFuture(selectedApplication)) {
       const shouldContinue = window.confirm(
-        `"${selectedApplication.classes?.title ?? '수업'}"은 아직 수업 시간이 지나지 않았어요.\n테스트가 아니라면 수업 후에 미참여 처리하는 게 안전합니다. 그래도 계속할까요?`,
+        `"${selectedApplication.classes?.title ?? '문화교류'}"은 아직 진행 시간이 지나지 않았어요.\n테스트가 아니라면 문화교류 후에 미참여 처리하는 게 안전합니다. 그래도 계속할까요?`,
       );
 
       if (!shouldContinue) return;
@@ -1384,7 +1465,7 @@ function App() {
 
       if (deleteResponse.error) {
         setSaving(false);
-        setMessage(`완료수업 기록을 정리하지 못했어요. ${deleteResponse.error.message}`);
+        setMessage(`완료문화 기록을 정리하지 못했어요. ${deleteResponse.error.message}`);
         return;
       }
     }
@@ -1408,7 +1489,7 @@ function App() {
       if (closeClassError) {
         setSaving(false);
         setMessage(
-          `미참여 처리는 됐지만 수업 마감 상태를 확인하지 못했어요. ${closeClassError}`,
+          `미참여 처리는 됐지만 문화교류 마감 상태를 확인하지 못했어요. ${closeClassError}`,
         );
         await loadDashboardData();
         return;
@@ -1416,7 +1497,7 @@ function App() {
     }
 
     setSaving(false);
-    setMessage('미참여로 처리했어요. 완료수업과 스탬프에는 반영되지 않아요.');
+    setMessage('미참여로 처리했어요. 완료문화와 스탬프에는 반영되지 않아요.');
     await loadDashboardData();
   };
 
@@ -1455,7 +1536,7 @@ function App() {
 
       if (deleteResponse.error) {
         setSaving(false);
-        setMessage(`완료수업 기록을 정리하지 못했어요. ${deleteResponse.error.message}`);
+        setMessage(`완료문화 기록을 정리하지 못했어요. ${deleteResponse.error.message}`);
         return;
       }
     }
@@ -1483,7 +1564,7 @@ function App() {
       if (openClassResponse.error) {
         setSaving(false);
         setMessage(
-          `신청완료로 되돌렸지만 지난 수업을 닫힌 상태로 유지하지 못했어요. ${openClassResponse.error.message}`,
+          `신청완료로 되돌렸지만 지난 문화교류를 닫힌 상태로 유지하지 못했어요. ${openClassResponse.error.message}`,
         );
         await loadDashboardData();
         return;
@@ -1502,7 +1583,7 @@ function App() {
       if (openClassResponse.error) {
         setSaving(false);
         setMessage(
-          `신청완료로 되돌렸지만 수업을 다시 열지 못했어요. ${openClassResponse.error.message}`,
+          `신청완료로 되돌렸지만 문화교류를 다시 열지 못했어요. ${openClassResponse.error.message}`,
         );
         await loadDashboardData();
         return;
@@ -1522,7 +1603,7 @@ function App() {
 
     const invalidFile = selectedFiles.find(
       (file) =>
-        !allowedCompletionPhotoTypes.has(file.type) ||
+        !isAllowedCompletionPhoto(file) ||
         file.size > maxCompletionPhotoSize,
     );
 
@@ -1632,7 +1713,7 @@ function App() {
       const { error: uploadError } = await supabase.storage
         .from(completionPhotoBucket)
         .upload(storagePath, file, {
-          contentType: file.type,
+          contentType: getCompletionPhotoContentType(file),
           upsert: false,
         });
 
@@ -1675,7 +1756,7 @@ function App() {
       selectedApplication.status === 'applied' ||
       selectedApplication.status === 'waiting'
     ) {
-      setMessage('신청 확인 탭에서 먼저 승인한 뒤 완료수업으로 등록해 주세요.');
+      setMessage('신청 확인 탭에서 먼저 승인한 뒤 완료문화로 등록해 주세요.');
       return;
     }
 
@@ -1701,12 +1782,12 @@ function App() {
     }
 
     if (!form.diary.trim() || !form.teacherComment.trim()) {
-      window.alert('수업 일지와 선생님 코멘트를 입력해 주세요.');
+      window.alert('문화 일지와 선생님 코멘트를 입력해 주세요.');
       return;
     }
 
     const shouldSaveCompletion = window.confirm(
-      '완료수업으로 저장할까요?\n저장하면 학부모 앱의 완료수업과 스탬프 화면에 반영됩니다.',
+      '완료문화로 저장할까요?\n저장하면 학부모 앱의 완료문화와 스탬프 화면에 반영됩니다.',
     );
 
     if (!shouldSaveCompletion) return;
@@ -1770,7 +1851,7 @@ function App() {
 
     if (uploadPhotoError) {
       setSaving(false);
-      setMessage(`완료수업은 저장됐지만 사진을 올리지 못했어요. ${uploadPhotoError}`);
+      setMessage(`완료문화는 저장됐지만 사진을 올리지 못했어요. ${uploadPhotoError}`);
       await loadDashboardData();
       return;
     }
@@ -1783,7 +1864,7 @@ function App() {
     if (applicationResponse.error) {
       setSaving(false);
       setMessage(
-        `완료수업은 저장됐지만 신청 상태를 바꾸지 못했어요. ${applicationResponse.error.message}`,
+        `완료문화는 저장됐지만 신청 상태를 바꾸지 못했어요. ${applicationResponse.error.message}`,
       );
       return;
     }
@@ -1796,7 +1877,7 @@ function App() {
       if (closeClassError) {
         setSaving(false);
         setMessage(
-          `완료수업은 저장됐지만 수업 마감 상태를 확인하지 못했어요. ${closeClassError}`,
+          `완료문화는 저장됐지만 문화교류 마감 상태를 확인하지 못했어요. ${closeClassError}`,
         );
         await loadDashboardData();
         return;
@@ -1809,7 +1890,7 @@ function App() {
       return [];
     });
     setRemovedPhotoIds(new Set());
-    setMessage('완료수업이 저장됐어요. 학부모 앱의 완료와 스탬프에 반영돼요.');
+    setMessage('완료문화가 저장됐어요. 학부모 앱의 완료와 스탬프에 반영돼요.');
     await loadDashboardData();
   };
 
@@ -1828,7 +1909,7 @@ function App() {
           <p className="eyebrow">Globee 운영진</p>
           <h1>관리자 로그인</h1>
           <p className="login-copy">
-            앱 사용자 현황과 완료수업 등록을 관리해 주세요.
+            앱 사용자 현황과 완료문화 등록을 관리해 주세요.
           </p>
 
           <form
@@ -1907,19 +1988,19 @@ function App() {
           className={view === 'completion' ? 'active' : ''}
           onClick={() => setView('completion')}
         >
-          완료수업 등록
+          완료문화 등록
         </button>
         <button
           className={view === 'classes' ? 'active' : ''}
           onClick={() => setView('classes')}
         >
-          수업 개설하기
+          문화교류 개설
         </button>
         <button
           className={view === 'deleteClasses' ? 'active' : ''}
           onClick={() => setView('deleteClasses')}
         >
-          수업 삭제하기
+          문화교류 삭제
         </button>
       </nav>
 
@@ -1951,7 +2032,7 @@ function App() {
               </div>
               <div>
                 <span>{dashboardStats.completedApplications}</span>
-                완료수업
+                완료문화
               </div>
             </div>
             <div className="summary-card standalone">
@@ -1965,7 +2046,7 @@ function App() {
               <div className="list-header">
                 <div>
                   <h2>사용자별 현황</h2>
-                  <p>전화번호 하나를 기준으로 학생과 수업 현황을 한 번에 봅니다.</p>
+                  <p>전화번호 하나를 기준으로 학생과 문화교류 현황을 한 번에 봅니다.</p>
                 </div>
               </div>
 
@@ -1974,7 +2055,7 @@ function App() {
                   <span>학부모</span>
                   <span>등록 학생</span>
                   <span>신청 현황</span>
-                  <span>수업 결과</span>
+                  <span>문화교류 결과</span>
                   <span>스탬프</span>
                 </div>
 
@@ -2011,7 +2092,7 @@ function App() {
                                   ...child.noShowApplications,
                                   ...child.completedApplications,
                                 ],
-                                '아직 처리된 수업 없음',
+                                '아직 처리된 문화교류 없음',
                               )}
                             </small>
                           </div>
@@ -2076,7 +2157,7 @@ function App() {
                       <div className="review-card-main">
                         <div>
                           <strong>
-                            {application.classes?.title ?? '수업 정보 없음'}
+                            {application.classes?.title ?? '문화교류 정보 없음'}
                           </strong>
                           <span>
                             {application.classes?.country ?? '나라 정보 없음'} ·{' '}
@@ -2152,7 +2233,7 @@ function App() {
             </div>
             <div>
               <span>{dashboardStats.completedApplications}</span>
-              완료수업
+              완료문화
             </div>
           </section>
 
@@ -2161,7 +2242,7 @@ function App() {
               <div className="list-header">
                 <div>
                   <h2>신청 목록</h2>
-                  <p>완료수업으로 등록할 신청을 선택해 주세요.</p>
+                  <p>완료문화로 등록할 신청을 선택해 주세요.</p>
                 </div>
                 <select
                   value={filter}
@@ -2177,7 +2258,7 @@ function App() {
                 >
                   <option value="pending">완료 등록 대기</option>
                   <option value="no_show">미참여</option>
-                  <option value="completed">완료수업</option>
+                  <option value="completed">완료문화</option>
                   <option value="all">전체</option>
                 </select>
               </div>
@@ -2191,14 +2272,14 @@ function App() {
                       application.id === selectedId ? 'selected' : ''
                     }`}
                     key={application.id}
-                    onClick={() => setSelectedId(application.id)}
+                    onClick={() => handleSelectApplication(application.id)}
                   >
                     <div className="flag-box">
                       {application.classes?.flag ?? '🌐'}
                     </div>
                     <div className="application-main">
                       <strong>
-                        {application.classes?.title ?? '수업 정보 없음'}
+                        {application.classes?.title ?? '문화교류 정보 없음'}
                       </strong>
                       <span>
                         {application.children?.full_name ?? '학생 정보 없음'} ·{' '}
@@ -2221,7 +2302,7 @@ function App() {
                   <div className="completion-heading">
                     <div>
                       <p className="eyebrow">
-                        {selectedApplication.classes?.country ?? '문화 수업'}
+                        {selectedApplication.classes?.country ?? '문화교류'}
                       </p>
                       <h2>{getCompletionTitle(selectedApplication)}</h2>
                     </div>
@@ -2236,7 +2317,7 @@ function App() {
                       {selectedApplication.children?.full_name ?? '-'}
                     </div>
                     <div>
-                      <span>수업</span>
+                      <span>문화교류</span>
                       {selectedApplication.classes?.title ?? '-'}
                     </div>
                     <div>
@@ -2244,7 +2325,7 @@ function App() {
                       {selectedApplication.classes?.teacher_name ?? '-'}
                     </div>
                     <div>
-                      <span>수업일</span>
+                      <span>진행일</span>
                       {formatDateTime(selectedApplication.classes?.starts_at ?? null)}
                     </div>
                   </div>
@@ -2264,7 +2345,7 @@ function App() {
                       />
                     </label>
                     <label>
-                      수업 일지
+                      문화 일지
                       <textarea
                         value={form.diary}
                         onChange={(event) =>
@@ -2273,7 +2354,7 @@ function App() {
                             diary: event.target.value,
                           }))
                         }
-                        placeholder="아이가 수업에서 경험한 내용을 적어 주세요."
+                        placeholder="아이가 문화교류에서 경험한 내용을 적어 주세요."
                       />
                     </label>
                     <label>
@@ -2287,13 +2368,13 @@ function App() {
                             teacherComment: event.target.value,
                           }))
                         }
-                        placeholder="수업 참여 태도와 인상 깊었던 순간을 적어 주세요."
+                        placeholder="참여 태도와 인상 깊었던 순간을 적어 주세요."
                       />
                     </label>
 
                     <div className="photo-upload-panel">
                       <label>
-                        수업 사진
+                        활동 사진
                         <input
                           type="file"
                           accept="image/jpeg,image/png,image/webp"
@@ -2325,7 +2406,7 @@ function App() {
                               >
                                 {existingPhotoUrls[photo.id] ? (
                                   <img
-                                    alt="저장된 수업 사진 미리보기"
+                                    alt="저장된 활동 사진 미리보기"
                                     src={existingPhotoUrls[photo.id]}
                                   />
                                 ) : (
@@ -2354,7 +2435,7 @@ function App() {
                               key={preview.previewUrl}
                             >
                               <img
-                                alt="선택한 수업 사진 미리보기"
+                                alt="선택한 활동 사진 미리보기"
                                 src={preview.previewUrl}
                               />
                               <span>{preview.file.name}</span>
@@ -2429,8 +2510,8 @@ function App() {
                           ? '저장 중'
                           : getCompletedClasses(selectedApplication.completed_classes)
                               .length
-                            ? '완료수업 수정하기'
-                            : '완료수업 등록하기'}
+                              ? '완료문화 수정하기'
+                            : '완료문화 등록하기'}
                       </button>
                     </div>
                   </form>
@@ -2447,7 +2528,7 @@ function App() {
             <div className="class-create-panel">
               <div className="list-header">
                 <div>
-                  <h2>수업 개설하기</h2>
+                  <h2>문화교류 개설</h2>
                   <p>
                     학교는 강북권 4개 대학교 중에서 선택해 주세요.
                   </p>
@@ -2456,7 +2537,7 @@ function App() {
 
               <form className="class-form" onSubmit={handleCreateClass}>
                 <label>
-                  수업명
+                  문화교류명
                   <input
                     value={classForm.title}
                     onChange={(event) =>
@@ -2470,7 +2551,7 @@ function App() {
                 </label>
 
                 <label>
-                  수업 설명
+                  문화교류 설명
                   <textarea
                     value={classForm.description}
                     onChange={(event) =>
@@ -2529,7 +2610,7 @@ function App() {
                     />
                   </label>
                   <label>
-                    수업 날짜와 시간
+                    문화교류 날짜와 시간
                     <input
                       type="datetime-local"
                       value={classForm.startsAt}
@@ -2563,15 +2644,15 @@ function App() {
                 </label>
 
                 <button className="primary-button" disabled={saving} type="submit">
-                  {saving ? '개설 중' : '수업 개설하기'}
+                  {saving ? '개설 중' : '문화교류 개설하기'}
                 </button>
               </form>
             </div>
 
             <div className="open-class-panel">
-              <h2>개설된 수업</h2>
+              <h2>개설된 문화교류</h2>
               <p className="panel-copy">
-                신청을 닫아야 하는 수업만 취소해 주세요. 테스트 데이터 삭제는
+                신청을 닫아야 하는 문화교류만 취소해 주세요. 테스트 데이터 삭제는
                 별도 메뉴에서 진행합니다.
               </p>
               <div className="open-class-list">
@@ -2596,14 +2677,14 @@ function App() {
                         onClick={() => handleCancelClass(classItem)}
                         type="button"
                       >
-                        {cancelingClassId === classItem.id ? '처리 중' : '수업 취소'}
+                        {cancelingClassId === classItem.id ? '처리 중' : '문화교류 취소'}
                       </button>
                     </div>
                   </div>
                 ))}
 
                 {openClasses.length === 0 && (
-                  <p className="empty-text">현재 개설된 수업이 없어요.</p>
+                  <p className="empty-text">현재 개설된 문화교류가 없어요.</p>
                 )}
               </div>
             </div>
@@ -2615,17 +2696,17 @@ function App() {
             <div className="class-delete-panel">
               <div className="list-header">
                 <div>
-                  <h2>수업 삭제하기</h2>
+                  <h2>문화교류 삭제</h2>
                   <p>
-                    테스트로 만들었거나 잘못 생성한 수업만 완전히 삭제해 주세요.
+                    테스트로 만들었거나 잘못 생성한 문화교류만 완전히 삭제해 주세요.
                     실제 운영 기록은 삭제하지 않는 게 안전합니다.
                   </p>
                 </div>
               </div>
 
               <div className="delete-warning">
-                삭제하면 연결된 신청, 완료수업, 미참여 기록이 함께 사라지고
-                되돌릴 수 없어요. 운영 중인 수업은 먼저 수업 개설하기에서
+                삭제하면 연결된 신청, 완료문화, 미참여 기록이 함께 사라지고
+                되돌릴 수 없어요. 운영 중인 문화교류는 먼저 문화교류 개설에서
                 취소한 뒤 삭제해 주세요.
               </div>
 
@@ -2658,7 +2739,7 @@ function App() {
                 ))}
 
                 {closedClasses.length === 0 && (
-                  <p className="empty-text">삭제할 수업이 없어요.</p>
+                  <p className="empty-text">삭제할 문화교류가 없어요.</p>
                 )}
               </div>
             </div>

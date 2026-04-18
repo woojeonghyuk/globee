@@ -27,6 +27,12 @@ admin-web/dist/
 mobile/dist/
 *.tsbuildinfo
 
+# deploy / tool state
+.vercel/
+web/.vercel/
+admin-web/.vercel/
+mobile/.eas/
+
 # logs
 npm-debug.log*
 yarn-debug.log*

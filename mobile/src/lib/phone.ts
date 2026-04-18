@@ -47,6 +47,10 @@ export function getPasswordValidationError(password: string, phone?: string) {
     return '비밀번호는 20자 이하로 입력해주세요.';
   }
 
+  if (/\s/.test(password)) {
+    return '비밀번호에는 공백을 사용할 수 없어요.';
+  }
+
   if (/^(.)\1+$/.test(password)) {
     return '같은 문자만 반복한 비밀번호는 사용할 수 없어요.';
   }

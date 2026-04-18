@@ -119,7 +119,7 @@ export default function StartScreen() {
                 </Text>
 
                 <Text style={styles.subtitle}>
-                  검증된 문화 수업을 쉽고 편하게 찾아보고{'\n'}
+                  검증된 문화교류를 쉽고 편하게 찾아보고{'\n'}
                   우리 아이에게 맞는 클래스를 신청해보세요.
                 </Text>
               </View>
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
     fontSize: 31,
     lineHeight: 40,
     fontWeight: '900',
-    letterSpacing: -0.9,
+    letterSpacing: 0,
     marginBottom: 22,
   },
   subtitle: {
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 18,
     fontWeight: '900',
-    letterSpacing: -0.3,
+    letterSpacing: 0,
   },
   linkText: {
     marginTop: 22,

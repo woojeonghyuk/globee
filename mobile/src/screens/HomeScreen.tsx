@@ -13,6 +13,7 @@ import ClassCard from '@/src/components/ClassCard';
 import ClassDetailSheet from '@/src/components/ClassDetailSheet';
 import ScreenShell from '@/src/components/ScreenShell';
 import { ClassItem, fixedCampusOptions } from '@/src/data/classes';
+import { getApplicationErrorMessage } from '@/src/lib/authMessages';
 import { useApplications } from '@/src/state/ApplicationsContext';
 import { useClasses } from '@/src/state/ClassesContext';
 import { useChildProfiles } from '@/src/state/ChildProfilesContext';
@@ -51,6 +52,7 @@ export default function HomeScreen() {
   const [selectedCampus, setSelectedCampus] = useState('');
   const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
   const [selectedChildIds, setSelectedChildIds] = useState<string[]>([]);
+  const [isApplying, setIsApplying] = useState(false);
 
   const hiddenCompletedClassIds = useMemo(
     () =>
@@ -92,13 +94,6 @@ export default function HomeScreen() {
     useCallback(() => {
       refreshClasses();
       refreshApplications();
-
-      const intervalId = setInterval(() => {
-        refreshClasses();
-        refreshApplications();
-      }, 10000);
-
-      return () => clearInterval(intervalId);
     }, [refreshApplications, refreshClasses]),
   );
 
@@ -217,12 +212,12 @@ export default function HomeScreen() {
   };
 
   const handleApply = async () => {
-    if (!selectedClass) return;
+    if (!selectedClass || isApplying) return;
 
     const remainingSeats = getSeatsRemaining(selectedClass);
 
     if (remainingSeats === 0) {
-      Alert.alert('마감된 수업이에요', '이 수업은 신청 가능한 자리가 없어요.');
+      Alert.alert('마감된 문화교류예요', '이 문화교류는 신청 가능한 자리가 없어요.');
       return;
     }
 
@@ -234,8 +229,8 @@ export default function HomeScreen() {
 
         if (allChildrenAlreadyApplied) {
           Alert.alert(
-            '이미 신청한 수업이에요',
-            '등록된 아이가 모두 이 수업을 신청했어요.',
+            '이미 신청한 문화교류예요',
+            '등록된 아이가 모두 이 문화교류를 신청했어요.',
           );
           return;
         }
@@ -251,7 +246,7 @@ export default function HomeScreen() {
     if (selectedChildren.length > remainingSeats) {
       Alert.alert(
         '자리가 부족해요',
-        `이 수업은 ${remainingSeats}자리만 남아 있어요.`,
+        `이 문화교류는 ${remainingSeats}자리만 남아 있어요.`,
       );
       return;
     }
@@ -262,10 +257,10 @@ export default function HomeScreen() {
 
     if (alreadyAppliedChildren.length > 0) {
       Alert.alert(
-        '이미 신청한 수업이에요',
+        '이미 신청한 문화교류예요',
         `${alreadyAppliedChildren
           .map((child) => child.fullName)
-          .join(', ')} 아이는 이미 이 수업을 신청했어요.`,
+          .join(', ')} 아이는 이미 이 문화교류를 신청했어요.`,
       );
       return;
     }
@@ -288,12 +283,14 @@ export default function HomeScreen() {
   };
 
   const submitApplications = async () => {
-    if (!selectedClass) return;
+    if (!selectedClass || isApplying) return;
 
     const appliedNames: string[] = [];
     const skippedNames: string[] = [];
 
     try {
+      setIsApplying(true);
+
       for (const child of selectedChildren) {
         const applied = await addApplication({
           classId: selectedClass.id,
@@ -314,8 +311,8 @@ export default function HomeScreen() {
 
       const message =
         error instanceof Error
-          ? error.message
-          : '수업 신청을 저장하지 못했어요. 잠시 후 다시 시도해주세요.';
+          ? getApplicationErrorMessage(error.message)
+          : getApplicationErrorMessage();
       const partialMessage =
         appliedNames.length > 0
           ? `${appliedNames.join(', ')} 아이는 신청됐고, 나머지 신청 중 문제가 생겼어요.\n${message}`
@@ -326,13 +323,15 @@ export default function HomeScreen() {
         partialMessage,
       );
       return;
+    } finally {
+      setIsApplying(false);
     }
 
     refreshApplications();
     refreshClasses();
 
     if (appliedNames.length === 0) {
-      Alert.alert('이미 신청한 수업이에요', '선택한 아이가 이미 이 수업을 신청했어요.');
+      Alert.alert('이미 신청한 문화교류예요', '선택한 아이가 이미 이 문화교류를 신청했어요.');
       return;
     }
 
@@ -408,9 +407,9 @@ export default function HomeScreen() {
 
         {filteredClasses.length === 0 ? (
           <View style={styles.emptyClassCard}>
-            <Text style={styles.emptyClassTitle}>여행지를 개발중이에요~</Text>
+            <Text style={styles.emptyClassTitle}>여행지를 준비 중이에요</Text>
             <Text style={styles.emptyClassText}>
-              여행지가 완성되면 바로 보여드릴께요.
+              여행지가 완성되면 바로 보여드릴게요.
             </Text>
           </View>
         ) : null}
@@ -425,19 +424,27 @@ export default function HomeScreen() {
           <Pressable
             style={({ pressed }) => [
               styles.applyButton,
-              (selectedChildren.length === 0 ||
+              (isApplying ||
+                selectedChildren.length === 0 ||
                 (selectedClass ? getSeatsRemaining(selectedClass) === 0 : false)) &&
                 styles.applyButtonDisabled,
               pressed &&
+                !isApplying &&
                 selectedChildren.length > 0 &&
                 !(selectedClass ? getSeatsRemaining(selectedClass) === 0 : false) &&
                 styles.pressed,
             ]}
+            disabled={
+              isApplying ||
+              (selectedClass ? getSeatsRemaining(selectedClass) === 0 : false)
+            }
             onPress={handleApply}
           >
             <Text style={styles.applyButtonText}>
-              {selectedClass && getSeatsRemaining(selectedClass) === 0
-                ? '마감된 수업'
+              {isApplying
+                ? '신청 보내는 중'
+                : selectedClass && getSeatsRemaining(selectedClass) === 0
+                ? '마감된 문화교류'
                 : selectedChildren.length > 1
                 ? `${selectedChildren.length}명 신청하기`
                 : '신청하기'}

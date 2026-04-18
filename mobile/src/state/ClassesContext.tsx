@@ -122,7 +122,7 @@ export function ClassesProvider({ children }: ClassesProviderProps) {
       }
 
       if (error) {
-        setErrorMessage(error.message);
+        setErrorMessage('문화교류 목록을 불러오지 못했어요. 잠시 후 다시 열어주세요.');
         return;
       }
 
@@ -140,11 +140,9 @@ export function ClassesProvider({ children }: ClassesProviderProps) {
             .map(mapClassRow),
         );
       }
-    } catch (error) {
+    } catch {
       setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : '문화교류 목록을 불러오지 못했어요.',
+        '문화교류 목록을 불러오지 못했어요. 잠시 후 다시 열어주세요.',
       );
       setClasses([]);
       setClassCatalog([]);
@@ -163,6 +161,11 @@ export function ClassesProvider({ children }: ClassesProviderProps) {
     } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN') {
         refreshClasses();
+      }
+
+      if (event === 'SIGNED_OUT') {
+        setClasses([]);
+        setClassCatalog([]);
       }
     });
 

@@ -156,7 +156,7 @@ export default function CompletedClassesScreen() {
           : downloadResult.uri;
 
       await Share.share({
-        title: 'Globee 완료수업 사진',
+        title: 'Globee 완료문화 사진',
         url: shareUrl,
         message: Platform.OS === 'android' ? shareUrl : undefined,
       });
@@ -261,7 +261,7 @@ export default function CompletedClassesScreen() {
                         ]}
                       >
                         <Image
-                          accessibilityLabel={`${item.classItem.title} 수업 사진`}
+                          accessibilityLabel={`${item.classItem.title} 문화교류 사진`}
                           source={{ uri: photo.uri }}
                           style={styles.memoryPhoto}
                         />
@@ -383,7 +383,7 @@ const styles = StyleSheet.create({
     color: colors.navy,
     fontSize: 32,
     fontWeight: '900',
-    letterSpacing: -0.8,
+    letterSpacing: 0,
     marginBottom: 8,
   },
   subtitle: {

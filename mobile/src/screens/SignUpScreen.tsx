@@ -15,6 +15,10 @@ import { router } from 'expo-router';
 
 import BrandWordmark from '@/src/components/BrandWordmark';
 import {
+  getOtpVerificationErrorMessage,
+  getPasswordUpdateErrorMessage,
+} from '@/src/lib/authMessages';
+import {
   formatKoreanPhoneInput,
   getPasswordValidationError,
   isValidKoreanPhone,
@@ -122,7 +126,7 @@ export default function SignUpScreen() {
       setIsSubmitting(false);
       Alert.alert(
         '이미 가입한 전화번호',
-        '이미 가입한 전화번호입니다. 로그인하거나 비밀번호 찾기를 이용해주세요.',
+        '이미 가입했거나 인증이 진행 중인 전화번호입니다. 로그인하거나 비밀번호 찾기를 이용해주세요.',
       );
       return;
     }
@@ -140,7 +144,7 @@ export default function SignUpScreen() {
     if (error) {
       setIsSubmitting(false);
       const message = error.message.toLowerCase().includes('already')
-        ? '이미 가입한 전화번호입니다. 로그인하거나 비밀번호 찾기를 이용해주세요.'
+        ? '이미 가입했거나 인증이 진행 중인 전화번호입니다. 로그인하거나 비밀번호 찾기를 이용해주세요.'
         : '인증번호를 보내지 못했어요. 잠시 후 다시 시도해주세요.';
       Alert.alert('인증번호 발송 실패', message);
       return;
@@ -189,7 +193,7 @@ export default function SignUpScreen() {
 
     if (error) {
       setIsSubmitting(false);
-      Alert.alert('인증 실패', error.message);
+      Alert.alert('인증 실패', getOtpVerificationErrorMessage(error.message));
       return;
     }
 
@@ -245,7 +249,7 @@ export default function SignUpScreen() {
 
     if (updateError) {
       setIsSubmitting(false);
-      Alert.alert('회원가입 실패', updateError.message);
+      Alert.alert('회원가입 실패', getPasswordUpdateErrorMessage(updateError.message));
       return;
     }
 
@@ -338,6 +342,7 @@ export default function SignUpScreen() {
                 editable={step === 'phone' && !isSubmitting}
                 style={styles.input}
                 textContentType="telephoneNumber"
+                autoComplete="tel"
               />
             </View>
 
@@ -354,6 +359,7 @@ export default function SignUpScreen() {
                   editable={step === 'code' && !isSubmitting}
                   style={styles.input}
                   textContentType="oneTimeCode"
+                  autoComplete="sms-otp"
                 />
                 {step === 'code' && (
                   <View style={styles.codeMetaRow}>
@@ -400,6 +406,8 @@ export default function SignUpScreen() {
                     maxLength={20}
                     style={styles.input}
                     textContentType="newPassword"
+                    autoCapitalize="none"
+                    autoCorrect={false}
                   />
                 </View>
 
@@ -414,6 +422,8 @@ export default function SignUpScreen() {
                     maxLength={20}
                     style={styles.input}
                     textContentType="newPassword"
+                    autoCapitalize="none"
+                    autoCorrect={false}
                   />
                 </View>
               </>
@@ -506,7 +516,7 @@ const styles = StyleSheet.create({
     fontSize: 26,
     lineHeight: 30,
     fontWeight: '900',
-    letterSpacing: -0.5,
+    letterSpacing: 0,
     textAlign: 'center',
     marginBottom: 10,
   },
@@ -579,7 +589,7 @@ const styles = StyleSheet.create({
     color: colors.navy,
     fontSize: 18,
     fontWeight: '900',
-    letterSpacing: -0.3,
+    letterSpacing: 0,
   },
   footerArea: {
     alignItems: 'center',
