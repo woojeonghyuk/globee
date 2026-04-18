@@ -330,6 +330,20 @@ export function CompletedRecordsProvider({
       )
       .on(
         'postgres_changes',
+        { event: '*', schema: 'public', table: 'applications' },
+        () => {
+          refreshCompletedRecords();
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'classes' },
+        () => {
+          refreshCompletedRecords();
+        },
+      )
+      .on(
+        'postgres_changes',
         { event: '*', schema: 'public', table: 'stamp_countries' },
         () => {
           refreshCompletedRecords();

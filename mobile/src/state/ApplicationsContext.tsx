@@ -29,6 +29,9 @@ type ApplicationRow = {
   children: {
     full_name: string;
   } | null;
+  classes: {
+    id: string;
+  } | null;
 };
 
 const activeApplicationStatuses = new Set<ApplicationItem['status']>([
@@ -113,12 +116,16 @@ export function ApplicationsProvider({ children }: ApplicationsProviderProps) {
 
       const { data, error } = await supabase
         .from('applications')
-        .select('id,class_id,child_id,status,children(full_name)')
+        .select('id,class_id,child_id,status,children(full_name),classes(id)')
         .neq('status', 'canceled')
         .order('created_at', { ascending: false });
 
       if (!error && data) {
-        setApplications((data as unknown as ApplicationRow[]).map(mapApplicationRow));
+        setApplications(
+          (data as unknown as ApplicationRow[])
+            .filter((row) => row.classes)
+            .map(mapApplicationRow),
+        );
       }
     } catch {
       setApplications([]);
@@ -149,6 +156,13 @@ export function ApplicationsProvider({ children }: ApplicationsProviderProps) {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'applications' },
+        () => {
+          refreshApplications();
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'classes' },
         () => {
           refreshApplications();
         },

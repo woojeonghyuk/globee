@@ -867,8 +867,9 @@ function App() {
       return;
     }
 
-    const nextApplications =
-      (applicationsResponse.data ?? []) as unknown as ApplicationRow[];
+    const nextApplications = (
+      (applicationsResponse.data ?? []) as unknown as ApplicationRow[]
+    ).filter((application) => application.classes);
 
     setApplications(nextApplications);
     setProfiles((profilesResponse.data ?? []) as ProfileRow[]);
@@ -1284,6 +1285,15 @@ function App() {
     if (selectedApplication?.class_id === classItem.id) {
       setSelectedId(null);
     }
+
+    setApplications((currentApplications) =>
+      currentApplications.filter(
+        (application) => application.class_id !== classItem.id,
+      ),
+    );
+    setClasses((currentClasses) =>
+      currentClasses.filter((currentClass) => currentClass.id !== classItem.id),
+    );
 
     const photoDeleteError = await removeCompletionPhotoFiles(photosToDelete);
     if (photoDeleteError) {
