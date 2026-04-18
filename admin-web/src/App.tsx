@@ -2371,7 +2371,7 @@ function App() {
                         title: event.target.value,
                       }))
                     }
-                    placeholder="베트남 시장과 음식 문화"
+                    placeholder="ex) 베트남 시장과 음식 문화"
                   />
                 </label>
 

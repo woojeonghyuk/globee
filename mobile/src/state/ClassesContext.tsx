@@ -34,6 +34,7 @@ type ClassRow = {
 
 type ClassesContextValue = {
   classes: ClassItem[];
+  errorMessage: string;
   isLoading: boolean;
   refreshClasses: () => Promise<void>;
   getClassById: (classId: string) => ClassItem | undefined;
@@ -90,10 +91,12 @@ function mapClassRow(row: ClassRow): ClassItem {
 export function ClassesProvider({ children }: ClassesProviderProps) {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [classCatalog, setClassCatalog] = useState<ClassItem[]>([]);
+  const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshClasses = useCallback(async () => {
     setIsLoading(true);
+    setErrorMessage('');
 
     try {
       const columns =
@@ -118,7 +121,12 @@ export function ClassesProvider({ children }: ClassesProviderProps) {
         classRows = fallbackResponse.data as ClassRow[] | null;
       }
 
-      if (!error && classRows) {
+      if (error) {
+        setErrorMessage(error.message);
+        return;
+      }
+
+      if (classRows) {
         const mappedClasses = classRows.map(mapClassRow);
 
         setClassCatalog(mappedClasses);
@@ -132,12 +140,17 @@ export function ClassesProvider({ children }: ClassesProviderProps) {
             .map(mapClassRow),
         );
       }
-    } catch {
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : '문화교류 목록을 불러오지 못했어요.',
+      );
       setClasses([]);
       setClassCatalog([]);
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -201,12 +214,13 @@ export function ClassesProvider({ children }: ClassesProviderProps) {
   const value = useMemo<ClassesContextValue>(
     () => ({
       classes,
+      errorMessage,
       isLoading,
       refreshClasses,
       getClassById: (classId) =>
         classCatalog.find((item) => item.id === classId),
     }),
-    [classCatalog, classes, isLoading, refreshClasses],
+    [classCatalog, classes, errorMessage, isLoading, refreshClasses],
   );
 
   return (

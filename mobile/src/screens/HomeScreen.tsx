@@ -41,7 +41,7 @@ function getClassSortTime(classItem: ClassItem) {
 
 export default function HomeScreen() {
   const { children } = useChildProfiles();
-  const { classes, refreshClasses } = useClasses();
+  const { classes, errorMessage, isLoading, refreshClasses } = useClasses();
   const {
     addApplication,
     applications,
@@ -51,6 +51,7 @@ export default function HomeScreen() {
   const [selectedCampus, setSelectedCampus] = useState('');
   const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
   const [selectedChildIds, setSelectedChildIds] = useState<string[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const hiddenCompletedClassIds = useMemo(
     () =>
@@ -107,11 +108,20 @@ export default function HomeScreen() {
       const intervalId = setInterval(() => {
         refreshClasses();
         refreshApplications();
-      }, 5000);
+      }, 3000);
 
       return () => clearInterval(intervalId);
     }, [refreshApplications, refreshClasses]),
   );
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([refreshClasses(), refreshApplications()]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refreshApplications, refreshClasses]);
 
   const selectedChildren = children.filter((child) =>
     selectedChildIds.includes(child.id),
@@ -374,8 +384,30 @@ export default function HomeScreen() {
       <View style={styles.classSection}>
         <View style={styles.classHeader}>
           <Text style={styles.classHeaderTitle}>오늘의 여행가능한 곳</Text>
-          <Text style={styles.classHeaderCount}>{filteredClasses.length}개</Text>
+          <View style={styles.classHeaderRight}>
+            <Text style={styles.classHeaderCount}>{filteredClasses.length}개</Text>
+            <Pressable
+              style={({ pressed }) => [
+                styles.refreshButton,
+                pressed && styles.pressed,
+                (isLoading || isRefreshing) && styles.refreshButtonDisabled,
+              ]}
+              onPress={handleRefresh}
+              disabled={isLoading || isRefreshing}
+            >
+              <Text style={styles.refreshButtonText}>
+                {isLoading || isRefreshing ? '확인중' : '새로고침'}
+              </Text>
+            </Pressable>
+          </View>
         </View>
+
+        {errorMessage ? (
+          <View style={styles.errorCard}>
+            <Text style={styles.errorTitle}>목록을 불러오지 못했어요</Text>
+            <Text style={styles.errorText}>{errorMessage}</Text>
+          </View>
+        ) : null}
 
         <View style={styles.cardList}>
           {filteredClasses.map((item) => (
@@ -549,10 +581,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 12,
     marginBottom: 14,
   },
   classHeaderTitle: {
     color: colors.navy,
+    flexShrink: 1,
     fontSize: 22,
     fontWeight: '900',
   },
@@ -561,8 +595,47 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '900',
   },
+  classHeaderRight: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  refreshButton: {
+    backgroundColor: 'rgba(255,255,255,0.72)',
+    borderColor: colors.line,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  refreshButtonDisabled: {
+    opacity: 0.56,
+  },
+  refreshButtonText: {
+    color: colors.navy,
+    fontSize: 12,
+    fontWeight: '900',
+  },
   cardList: {
     gap: 14,
+  },
+  errorCard: {
+    backgroundColor: '#FFE1E4',
+    borderRadius: 18,
+    gap: 5,
+    marginBottom: 14,
+    padding: 14,
+  },
+  errorTitle: {
+    color: '#C52C3A',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  errorText: {
+    color: '#8F2F39',
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 18,
   },
   emptyClassCard: {
     padding: 22,
