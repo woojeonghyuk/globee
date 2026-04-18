@@ -54,3 +54,26 @@ npx eas-cli@latest build --platform android --profile production
 ```
 
 EAS 환경변수에는 `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`만 등록합니다.
+
+## EAS Update
+
+출시된 앱의 문구, 레이아웃, 색상, 대부분의 JavaScript 로직은 EAS Update로 빠르게 배포할 수 있습니다.
+
+테스트용 OTA 업데이트:
+
+```bash
+npx eas-cli@latest update --channel preview --message "Fix signup layout"
+```
+
+실사용자용 OTA 업데이트:
+
+```bash
+npx eas-cli@latest update --channel production --message "Fix signup layout"
+```
+
+운영 원칙:
+
+- 먼저 `preview` 채널에 업데이트를 보내고 팀원 폰에서 확인합니다.
+- 문제가 없을 때만 `production` 채널에 보냅니다.
+- native 라이브러리 추가, 권한 변경, 앱 아이콘/스플래시 변경, Expo SDK 업그레이드는 EAS Update로 해결할 수 없고 새 앱 빌드가 필요합니다.
+- `app.json`의 `version`을 올리면 `runtimeVersion`도 함께 바뀌므로, 새 앱 버전과 OTA 업데이트 호환 범위가 분리됩니다.

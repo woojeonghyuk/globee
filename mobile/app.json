@@ -8,6 +8,12 @@
     "scheme": "globee",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/45cf3c36-b120-4d14-aa60-a42b31d10bf4"
+    },
     "ios": {
       "bundleIdentifier": "com.globee.parent",
       "buildNumber": "1",

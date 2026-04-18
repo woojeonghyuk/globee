@@ -1,0 +1,121 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository-guard:
+    name: Repository Guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check forbidden tracked files
+        shell: bash
+        run: |
+          forbidden_files="$(
+            git ls-files | grep -E '(^|/)(node_modules|dist|build|\.vercel|\.eas|\.expo|\.temp)(/|$)|(^|/)\.env($|\.|/)' || true
+          )"
+
+          if [ -n "$forbidden_files" ]; then
+            echo "Forbidden generated or secret-like files are tracked:"
+            echo "$forbidden_files"
+            exit 1
+          fi
+
+  mobile:
+    name: Mobile
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+  admin-web:
+    name: Admin Web
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: admin-web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: admin-web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+  public-web:
+    name: Public Web
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check local links and assets
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+
+          const webDir = path.join(process.cwd(), 'web');
+          const htmlFiles = fs.readdirSync(webDir).filter((name) => name.endsWith('.html'));
+          const missing = [];
+
+          for (const fileName of htmlFiles) {
+            const filePath = path.join(webDir, fileName);
+            const content = fs.readFileSync(filePath, 'utf8');
+            const regex = /\b(?:href|src)="\.\/([^"#?]+)(?:[?#][^"]*)?"/g;
+
+            for (const match of content.matchAll(regex)) {
+              const targetPath = path.join(webDir, match[1]);
+              if (!fs.existsSync(targetPath)) {
+                missing.push(`${fileName}: ./${match[1]}`);
+              }
+            }
+          }
+
+          if (missing.length > 0) {
+            console.error('Missing local web links/assets:');
+            console.error(missing.join('\n'));
+            process.exit(1);
+          }
+
+          console.log('All local web links/assets exist.');
+          NODE

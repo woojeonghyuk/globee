@@ -38,6 +38,15 @@ supabase/    SQL 마이그레이션, RLS 정책, Edge Functions
 
 ## Common Checks
 
+GitHub에 push하거나 PR을 만들면 GitHub Actions `CI`가 아래 검사를 자동으로 실행합니다.
+
+- 추적되면 안 되는 파일 검사: `.env`, `node_modules`, `.vercel`, `.eas`, `dist`, `build`
+- 모바일 앱: TypeScript 타입체크, ESLint
+- 운영진 웹: production build
+- 공개 웹사이트: 로컬 링크와 이미지 참조 확인
+
+로컬에서 직접 확인할 때는 아래 명령을 사용합니다.
+
 ```bash
 cd mobile
 npx.cmd tsc --noEmit
@@ -54,5 +63,14 @@ npm.cmd run build
 1. Apply new SQL files in `supabase/sql` through Supabase SQL Editor.
 2. Deploy changed Edge Functions.
 3. Push code to GitHub so Vercel redeploys `web` and `admin-web`.
-4. Build Android preview APK with EAS and test on a real Android device.
-5. Build production AAB and submit through Google Play Console.
+4. Confirm GitHub Actions `CI` passed on GitHub.
+5. Build Android preview APK with EAS and test on a real Android device.
+6. Build production AAB and submit through Google Play Console.
+
+## Release Discipline
+
+- 운영진 웹과 공개 웹사이트는 GitHub `main`에 push하면 Vercel이 자동 배포합니다.
+- 모바일 앱은 Google Play에 올라가는 릴리즈이므로 자동 배포하지 않고, EAS production build를 수동으로 실행합니다.
+- 출시된 모바일 앱의 문구, 디자인, JavaScript 수정은 EAS Update의 `preview` 채널에서 먼저 확인한 뒤 `production` 채널로 배포합니다.
+- Supabase SQL과 Edge Functions는 자동 적용하지 않습니다. DB 변경은 SQL Editor에서 실행하고, 함수 변경은 Supabase CLI로 배포한 뒤 테스트합니다.
+- 새 기능을 넣을 때는 `mobile`, `admin-web`, `supabase`, `web` 중 영향을 받는 폴더의 README도 함께 갱신합니다.
