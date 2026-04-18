@@ -93,13 +93,17 @@ function formatKoreanDate(value: string | null | undefined) {
   }).format(date);
 }
 
-async function sendKakaoWorkMessage(webhookUrl: string, blocks: { type: 'text'; text: string }[]) {
+async function sendKakaoWorkMessage(
+  webhookUrl: string,
+  text: string,
+  blocks: { type: 'text'; text: string }[],
+) {
   const response = await fetch(webhookUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ blocks }),
+    body: JSON.stringify({ text, blocks }),
   });
 
   if (!response.ok) {
@@ -240,6 +244,7 @@ Deno.serve(async (req) => {
   const parentProfile = parentProfileData as ProfileRow | null;
   const parentPhone = formatPhone(parentProfile?.phone ?? user.phone);
   const seatsTotal = classRow?.seats_total ?? 6;
+  const fallbackText = `[Globee] 새 신청: ${displayText(child?.full_name)} / ${displayText(classRow?.title)}`;
 
   const blocks = [
     {
@@ -272,7 +277,7 @@ Deno.serve(async (req) => {
   ];
 
   try {
-    await sendKakaoWorkMessage(kakaoWorkWebhookUrl, blocks);
+    await sendKakaoWorkMessage(kakaoWorkWebhookUrl, fallbackText, blocks);
   } catch (error) {
     console.error(error);
     return jsonResponse({ error: 'Failed to send KakaoWork notification.' }, 502);

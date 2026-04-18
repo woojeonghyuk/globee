@@ -908,6 +908,28 @@ input[type='file'] {
   margin: 0;
 }
 
+.completion-blocking-notice {
+  background: #fff1c7;
+  border: 1px solid #f0c964;
+  border-radius: 8px;
+  color: #6f4b00;
+  display: grid;
+  gap: 6px;
+  line-height: 1.55;
+  padding: 14px 16px;
+}
+
+.completion-blocking-notice strong {
+  color: #172033;
+  font-size: 15px;
+}
+
+.completion-blocking-notice p {
+  font-size: 13px;
+  font-weight: 800;
+  margin: 0;
+}
+
 .photo-preview-grid {
   display: grid;
   gap: 12px;

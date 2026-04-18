@@ -270,6 +270,26 @@ export default function HomeScreen() {
       return;
     }
 
+    const childNames = selectedChildren.map((child) => child.fullName).join(', ');
+    const applyMessage =
+      selectedChildren.length > 1
+        ? `${childNames} 아이들의 ${selectedClass.country} 문화교류를 신청할까요?\n신청 후 운영진 확인을 거쳐 신청 완료로 바뀌어요.`
+        : `${childNames} 아이의 ${selectedClass.country} 문화교류를 신청할까요?\n신청 후 운영진 확인을 거쳐 신청 완료로 바뀌어요.`;
+
+    Alert.alert('문화교류 신청', applyMessage, [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '신청하기',
+        onPress: () => {
+          void submitApplications();
+        },
+      },
+    ]);
+  };
+
+  const submitApplications = async () => {
+    if (!selectedClass) return;
+
     const appliedNames: string[] = [];
     const skippedNames: string[] = [];
 

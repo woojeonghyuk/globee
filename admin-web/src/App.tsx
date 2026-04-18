@@ -150,6 +150,10 @@ function getAllCompletedPhotos(value: CompletedClassValue) {
   );
 }
 
+function getPendingReviewBlockMessage(count: number) {
+  return `같은 수업에 확인중인 신청 ${count}건이 남아 있어요. 신청 확인 탭에서 승인 또는 신청 취소를 모두 완료한 뒤 진행해 주세요.`;
+}
+
 function sanitizeStorageFileName(fileName: string) {
   const normalized = fileName.trim().toLowerCase();
   const fallbackName = 'photo.jpg';
@@ -646,6 +650,20 @@ function App() {
       ),
     [applications],
   );
+
+  const selectedPendingReviewApplications = useMemo(() => {
+    if (!selectedApplication) return [];
+
+    return getPendingReviewApplicationsForClass(
+      selectedApplication.class_id,
+      selectedApplication.id,
+    );
+  }, [getPendingReviewApplicationsForClass, selectedApplication]);
+
+  const selectedPendingReviewMessage =
+    selectedPendingReviewApplications.length > 0
+      ? getPendingReviewBlockMessage(selectedPendingReviewApplications.length)
+      : '';
 
   const openClasses = useMemo(() => {
     return classes
@@ -1308,9 +1326,12 @@ function App() {
       );
 
     if (pendingReviewApplicationsForClass.length > 0) {
-      setMessage(
-        `같은 수업에 확인중인 신청 ${pendingReviewApplicationsForClass.length}건이 남아 있어요. 신청 확인 탭에서 먼저 승인 또는 신청 취소를 해주세요.`,
+      const pendingReviewMessage = getPendingReviewBlockMessage(
+        pendingReviewApplicationsForClass.length,
       );
+
+      setMessage(pendingReviewMessage);
+      window.alert(pendingReviewMessage);
       return;
     }
 
@@ -1655,9 +1676,12 @@ function App() {
       );
 
     if (pendingReviewApplicationsForClass.length > 0) {
-      setMessage(
-        `같은 수업에 확인중인 신청 ${pendingReviewApplicationsForClass.length}건이 남아 있어요. 신청 확인 탭에서 먼저 승인 또는 신청 취소를 해주세요.`,
+      const pendingReviewMessage = getPendingReviewBlockMessage(
+        pendingReviewApplicationsForClass.length,
       );
+
+      setMessage(pendingReviewMessage);
+      window.alert(pendingReviewMessage);
       return;
     }
 
@@ -2337,6 +2361,22 @@ function App() {
                         </div>
                       ) : null}
                     </div>
+
+                    {selectedPendingReviewMessage ? (
+                      <div className="completion-blocking-notice" role="alert">
+                        <strong>먼저 신청 확인을 완료해 주세요.</strong>
+                        <p>{selectedPendingReviewMessage}</p>
+                        <p>
+                          남은 신청:{' '}
+                          {selectedPendingReviewApplications
+                            .map(
+                              (application) =>
+                                application.children?.full_name ?? '이름 없음',
+                            )
+                            .join(', ')}
+                        </p>
+                      </div>
+                    ) : null}
 
                     <div className="completion-actions">
                       <button
