@@ -17,6 +17,7 @@ supabase/    SQL 마이그레이션, RLS 정책, Edge Functions
 - Admin Web: React, Vite, TypeScript
 - Backend: Supabase Auth, PostgreSQL, Storage, Realtime, RPC, Edge Functions
 - SMS OTP: Supabase Phone Auth + Twilio
+- Operator Alerts: KakaoWork Incoming Webhook through Supabase Edge Functions
 - Public/Admin Web Deploy: Vercel
 - Mobile Build: EAS Build
 
@@ -31,6 +32,7 @@ supabase/    SQL 마이그레이션, RLS 정책, Edge Functions
 - Do not commit `.env`, `.env.local`, service role keys, or secret keys.
 - Mobile and admin web may only use Supabase URL and anon/publishable key.
 - Supabase service role key is used only inside Edge Functions through Supabase environment variables.
+- KakaoWork webhook URLs are stored only as Supabase Secrets.
 - Admin web session persistence is disabled, so operators must log in again after closing or refreshing the page.
 - Test OTP entries in Supabase Auth should stay empty before production release.
 

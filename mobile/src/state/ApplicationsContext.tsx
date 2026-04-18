@@ -50,6 +50,29 @@ function isActiveApplication(application: ApplicationItem) {
   return activeApplicationStatuses.has(application.status);
 }
 
+async function notifyNewApplication(applicationId: string) {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) return;
+
+    const { error } = await supabase.functions.invoke('notify-new-application', {
+      body: { applicationId },
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+
+    if (error) {
+      console.warn('Failed to send KakaoWork notification.', error.message);
+    }
+  } catch (error) {
+    console.warn('Failed to send KakaoWork notification.', error);
+  }
+}
+
 type ApplicationsContextValue = {
   applications: ApplicationItem[];
   addApplication: (application: ApplicationInput) => Promise<boolean>;
@@ -171,6 +194,7 @@ export function ApplicationsProvider({ children }: ApplicationsProviderProps) {
 
           if (error) throw error;
           const row = data as ApplicationRow;
+          void notifyNewApplication(row.id);
 
           setApplications((prev) => [
             {

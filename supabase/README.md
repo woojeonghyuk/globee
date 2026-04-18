@@ -41,16 +41,21 @@ functions/  Supabase Edge Functions
 ## Edge Functions
 
 - `delete-account`: 학부모 계정 탈퇴 처리
+- `notify-new-application`: 새 신청을 카카오워크 운영진 방으로 알림
 
 배포:
 
 ```bash
 npx supabase functions deploy delete-account --project-ref emuvubzjxdfdonjrabaw --no-verify-jwt
+npx supabase functions deploy notify-new-application --project-ref emuvubzjxdfdonjrabaw --no-verify-jwt
 ```
+
+`notify-new-application`은 `KAKAOWORK_WEBHOOK_URL` Supabase Secret이 필요합니다.
 
 ## Security Notes
 
 - service role key는 Edge Function 환경변수로만 사용합니다.
 - 프론트엔드에는 service role key를 넣지 않습니다.
+- 카카오워크 Webhook URL은 Supabase Secret에만 저장하고 코드에 직접 넣지 않습니다.
 - 새 SQL을 추가하면 Supabase SQL Editor에서 실행한 뒤 앱/관리자웹 주요 흐름을 다시 테스트합니다.
 - Storage 사진 파일은 private bucket에 저장하고, RLS로 해당 보호자와 운영진만 접근하게 합니다.
