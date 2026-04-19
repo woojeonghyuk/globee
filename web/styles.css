@@ -16,6 +16,10 @@
   box-sizing: border-box;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   background: var(--background);
@@ -29,10 +33,20 @@ body {
     "Malgun Gothic",
     sans-serif;
   line-height: 1.7;
+  overflow-wrap: break-word;
 }
 
 a {
   color: inherit;
+}
+
+a:focus-visible {
+  outline: 3px solid rgba(15, 46, 75, 0.36);
+  outline-offset: 4px;
+}
+
+img {
+  max-width: 100%;
 }
 
 .page {
@@ -132,6 +146,11 @@ a {
   font-weight: 800;
   padding: 9px 13px;
   text-decoration: none;
+}
+
+.nav a[aria-current="page"] {
+  background: var(--navy);
+  color: #ffffff;
 }
 
 .hero {

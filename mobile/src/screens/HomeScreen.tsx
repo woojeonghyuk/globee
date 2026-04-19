@@ -60,7 +60,7 @@ export default function HomeScreen() {
         applications
           .filter(
             (application) =>
-              application.status === '수업 완료' ||
+              application.status === '완료문화' ||
               application.status === '미참여',
           )
           .map((application) => application.classId),
@@ -346,6 +346,11 @@ export default function HomeScreen() {
     );
   };
 
+  const selectedClassSeatsFull = selectedClass
+    ? getSeatsRemaining(selectedClass) === 0
+    : false;
+  const isApplyButtonDisabled = isApplying || selectedClassSeatsFull;
+
   return (
     <ScreenShell>
       <View style={styles.header}>
@@ -424,29 +429,23 @@ export default function HomeScreen() {
           <Pressable
             style={({ pressed }) => [
               styles.applyButton,
-              (isApplying ||
-                selectedChildren.length === 0 ||
-                (selectedClass ? getSeatsRemaining(selectedClass) === 0 : false)) &&
-                styles.applyButtonDisabled,
+              isApplyButtonDisabled && styles.applyButtonDisabled,
               pressed &&
-                !isApplying &&
-                selectedChildren.length > 0 &&
-                !(selectedClass ? getSeatsRemaining(selectedClass) === 0 : false) &&
+                !isApplyButtonDisabled &&
                 styles.pressed,
             ]}
-            disabled={
-              isApplying ||
-              (selectedClass ? getSeatsRemaining(selectedClass) === 0 : false)
-            }
+            disabled={isApplyButtonDisabled}
             onPress={handleApply}
           >
             <Text style={styles.applyButtonText}>
               {isApplying
                 ? '신청 보내는 중'
-                : selectedClass && getSeatsRemaining(selectedClass) === 0
+                : selectedClassSeatsFull
                 ? '마감된 문화교류'
                 : selectedChildren.length > 1
                 ? `${selectedChildren.length}명 신청하기`
+                : selectedChildren.length === 0
+                ? '신청할 아이 선택하기'
                 : '신청하기'}
             </Text>
           </Pressable>

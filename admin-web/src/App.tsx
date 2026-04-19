@@ -27,6 +27,7 @@ const statusLabels: Record<ApplicationStatus, string> = {
 
 const reviewPendingStatuses = new Set<ApplicationStatus>(['applied']);
 const completionReadyStatuses = new Set<ApplicationStatus>(['confirmed']);
+const finalizedStatuses = new Set<ApplicationStatus>(['completed', 'no_show']);
 const activeStatuses = new Set<ApplicationStatus>([
   'applied',
   'waiting',
@@ -380,13 +381,6 @@ function isClassInFuture(application: ApplicationRow) {
   return !Number.isNaN(date.getTime()) && date.getTime() > Date.now();
 }
 
-function isClassStartInFuture(startsAt: string | null | undefined) {
-  if (!startsAt) return false;
-
-  const date = new Date(startsAt);
-  return !Number.isNaN(date.getTime()) && date.getTime() > Date.now();
-}
-
 function getNewerActivityAt(
   current: string | null,
   next: string | null,
@@ -720,48 +714,23 @@ function App() {
 
   const openClasses = useMemo(() => {
     return classes
-      .filter((classItem) => {
-        if (!classItem.is_open) return false;
-
-        const classApplications = applications.filter(
-          (application) =>
-            application.class_id === classItem.id &&
-            application.status !== 'canceled',
-        );
-        const hasActiveApplications = classApplications.some((application) =>
-          activeStatuses.has(application.status),
-        );
-        const hasFinishedApplications = classApplications.some(
-          (application) =>
-            application.status === 'completed' || application.status === 'no_show',
-        );
-
-        if (hasFinishedApplications) return false;
-        if (hasActiveApplications) return true;
-
-        return true;
-      })
+      .filter((classItem) => classItem.is_open)
       .sort(
         (first, second) =>
           new Date(first.starts_at).getTime() - new Date(second.starts_at).getTime(),
       );
-  }, [applications, classes]);
-
-  const openClassIds = useMemo(
-    () => new Set(openClasses.map((classItem) => classItem.id)),
-    [openClasses],
-  );
+  }, [classes]);
 
   const closedClasses = useMemo(
     () =>
       classes
-        .filter((classItem) => !openClassIds.has(classItem.id))
+        .filter((classItem) => !classItem.is_open)
         .sort(
           (first, second) =>
             new Date(second.starts_at).getTime() -
             new Date(first.starts_at).getTime(),
         ),
-    [classes, openClassIds],
+    [classes],
   );
 
   const getClassSummary = useCallback(
@@ -940,15 +909,19 @@ function App() {
     setClasses((classesResponse.data ?? []) as ClassRow[]);
 
     setSelectedId((currentSelectedId) => {
-      if (nextApplications.length === 0) return null;
+      const selectableApplications = nextApplications.filter(
+        (application) => application.status !== 'canceled',
+      );
+
+      if (selectableApplications.length === 0) return null;
       if (
         currentSelectedId &&
-        nextApplications.some((row) => row.id === currentSelectedId)
+        selectableApplications.some((row) => row.id === currentSelectedId)
       ) {
         return currentSelectedId;
       }
 
-      const sortedApplications = sortApplicationsForOperation(nextApplications);
+      const sortedApplications = sortApplicationsForOperation(selectableApplications);
       const firstActive =
         sortedApplications.find((row) => activeStatuses.has(row.status)) ??
         sortedApplications[0];
@@ -1326,6 +1299,13 @@ function App() {
 
     if (!shouldConfirmAgain) return;
 
+    if (summary.activeCount > 0) {
+      setMessage(
+        '진행 중인 신청이 남아 있어요. 먼저 문화교류를 취소하거나 신청을 완료/미참여로 정리한 뒤 삭제해 주세요.',
+      );
+      return;
+    }
+
     setDeletingClassId(classItem.id);
     setMessage('');
 
@@ -1389,13 +1369,26 @@ function App() {
     await loadDashboardData();
   };
 
-  const closeClassAfterFinalization = async (classId: string) => {
-    const closeClassResponse = await supabase
+  const syncClassOpenStateAfterFinalization = async (classId: string) => {
+    const { count, error: countError } = await supabase
+      .from('applications')
+      .select('id', { count: 'exact', head: true })
+      .eq('class_id', classId)
+      .in('status', ['applied', 'waiting', 'confirmed']);
+
+    if (countError) {
+      return countError.message;
+    }
+
+    const openStateResponse = await supabase
       .from('classes')
-      .update({ is_open: false, updated_at: new Date().toISOString() })
+      .update({
+        is_open: (count ?? 0) > 0,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', classId);
 
-    return closeClassResponse.error?.message ?? null;
+    return openStateResponse.error?.message ?? null;
   };
 
   const handleMarkNoShow = async () => {
@@ -1482,14 +1475,14 @@ function App() {
     }
 
     if (selectedApplication.class_id) {
-      const closeClassError = await closeClassAfterFinalization(
+      const classOpenStateError = await syncClassOpenStateAfterFinalization(
         selectedApplication.class_id,
       );
 
-      if (closeClassError) {
+      if (classOpenStateError) {
         setSaving(false);
         setMessage(
-          `미참여 처리는 됐지만 문화교류 마감 상태를 확인하지 못했어요. ${closeClassError}`,
+          `미참여 처리는 됐지만 문화교류 마감 상태를 확인하지 못했어요. ${classOpenStateError}`,
         );
         await loadDashboardData();
         return;
@@ -1504,6 +1497,11 @@ function App() {
   const handleMarkPending = async () => {
     if (!selectedApplication) return;
     if (saving) return;
+
+    if (!finalizedStatuses.has(selectedApplication.status)) {
+      setMessage('완료문화 또는 미참여 상태만 신청완료로 되돌릴 수 있어요.');
+      return;
+    }
 
     const shouldMarkPending = window.confirm(
       `"${selectedApplication.children?.full_name ?? '학생'}" 학생의 신청을 신청완료 상태로 되돌릴까요?`,
@@ -1552,38 +1550,15 @@ function App() {
       return;
     }
 
-    if (
-      selectedApplication.class_id &&
-      !isClassStartInFuture(selectedApplication.classes?.starts_at)
-    ) {
-      const openClassResponse = await supabase
-        .from('classes')
-        .update({ is_open: false, updated_at: new Date().toISOString() })
-        .eq('id', selectedApplication.class_id);
+    if (selectedApplication.class_id) {
+      const classOpenStateError = await syncClassOpenStateAfterFinalization(
+        selectedApplication.class_id,
+      );
 
-      if (openClassResponse.error) {
+      if (classOpenStateError) {
         setSaving(false);
         setMessage(
-          `신청완료로 되돌렸지만 지난 문화교류를 닫힌 상태로 유지하지 못했어요. ${openClassResponse.error.message}`,
-        );
-        await loadDashboardData();
-        return;
-      }
-    }
-
-    if (
-      selectedApplication.class_id &&
-      isClassStartInFuture(selectedApplication.classes?.starts_at)
-    ) {
-      const openClassResponse = await supabase
-        .from('classes')
-        .update({ is_open: true, updated_at: new Date().toISOString() })
-        .eq('id', selectedApplication.class_id);
-
-      if (openClassResponse.error) {
-        setSaving(false);
-        setMessage(
-          `신청완료로 되돌렸지만 문화교류를 다시 열지 못했어요. ${openClassResponse.error.message}`,
+          `신청완료로 되돌렸지만 문화교류 신청 가능 상태를 맞추지 못했어요. ${classOpenStateError}`,
         );
         await loadDashboardData();
         return;
@@ -1674,9 +1649,6 @@ function App() {
   const deleteCompletionPhotos = async (photos: CompletedClassPhotoRow[]) => {
     if (!photos.length) return null;
 
-    const storageError = await removeCompletionPhotoFiles(photos);
-    if (storageError) return storageError;
-
     const { error: tableError } = await supabase
       .from('completed_class_photos')
       .delete()
@@ -1685,7 +1657,9 @@ function App() {
         photos.map((photo) => photo.id),
       );
 
-    return tableError?.message ?? null;
+    if (tableError) return tableError.message;
+
+    return removeCompletionPhotoFiles(photos);
   };
 
   const uploadCompletionPhotos = async (
@@ -1870,14 +1844,14 @@ function App() {
     }
 
     if (selectedApplication.class_id) {
-      const closeClassError = await closeClassAfterFinalization(
+      const classOpenStateError = await syncClassOpenStateAfterFinalization(
         selectedApplication.class_id,
       );
 
-      if (closeClassError) {
+      if (classOpenStateError) {
         setSaving(false);
         setMessage(
-          `완료문화는 저장됐지만 문화교류 마감 상태를 확인하지 못했어요. ${closeClassError}`,
+          `완료문화는 저장됐지만 문화교류 마감 상태를 확인하지 못했어요. ${classOpenStateError}`,
         );
         await loadDashboardData();
         return;
@@ -2473,7 +2447,7 @@ function App() {
                       <button
                         className="ghost-action-button"
                         disabled={
-                          saving || activeStatuses.has(selectedApplication.status)
+                          saving || !finalizedStatuses.has(selectedApplication.status)
                         }
                         onClick={handleMarkPending}
                         type="button"

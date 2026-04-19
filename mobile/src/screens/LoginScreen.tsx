@@ -4,12 +4,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Href, router } from 'expo-router';
 
 import BrandWordmark from '@/src/components/BrandWordmark';
@@ -29,9 +31,16 @@ const resetPasswordRoute = '/reset-password' as Href;
 export default function LoginScreen() {
   useAuthScreenBackHandler();
 
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isWideAndroid = Platform.OS === 'android' && width >= 520;
+  const bottomPadding = Math.max(
+    insets.bottom + 28,
+    isWideAndroid ? 92 : 42,
+  );
 
   const handleLogin = async () => {
     if (isSubmitting) return;
@@ -84,7 +93,14 @@ export default function LoginScreen() {
           <Text style={styles.backText}>←</Text>
         </Pressable>
 
-        <View style={styles.content}>
+        <ScrollView
+          alwaysBounceVertical={false}
+          bounces={false}
+          contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
+          keyboardShouldPersistTaps="handled"
+          overScrollMode="never"
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.headerArea}>
             <BrandWordmark width={148} style={styles.brandLogo} />
             <Text style={styles.title}>로그인</Text>
@@ -126,6 +142,7 @@ export default function LoginScreen() {
             </View>
 
             <Pressable
+              disabled={isSubmitting}
               style={({ pressed }) => [
                 styles.loginButton,
                 isSubmitting && styles.loginButtonDisabled,
@@ -156,7 +173,7 @@ export default function LoginScreen() {
               <Text style={styles.footerLink}>로그인 문의</Text>
             </Pressable>
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -211,7 +228,7 @@ const styles = StyleSheet.create({
   },
 
   content: {
-    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: 30,
     paddingTop: 78,
     paddingBottom: 34,

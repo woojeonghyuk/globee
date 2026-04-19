@@ -4,7 +4,7 @@
     "slug": "globee",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/globee-logo.png",
+    "icon": "./assets/images/globee-app-icon.png",
     "scheme": "globee",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
@@ -24,25 +24,33 @@
       "versionCode": 1,
       "permissions": [],
       "adaptiveIcon": {
-        "backgroundColor": "#fff8d8",
-        "foregroundImage": "./assets/images/globee-logo.png"
+        "backgroundColor": "#FFF498",
+        "foregroundImage": "./assets/images/globee-app-icon.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/globee-logo.png"
+      "favicon": "./assets/images/globee-app-icon.png"
     },
     "plugins": [
       "expo-router",
       [
+        "expo-media-library",
+        {
+          "photosPermission": "Globee가 완료문화 사진을 갤러리에 저장하기 위해 사진 접근 권한을 사용합니다.",
+          "savePhotosPermission": "Globee가 완료문화 사진을 갤러리에 저장하기 위해 사진 저장 권한을 사용합니다.",
+          "granularPermissions": []
+        }
+      ],
+      [
         "expo-splash-screen",
         {
-          "image": "./assets/images/globee-logo.png",
-          "imageWidth": 200,
+          "image": "./assets/images/globee-app-icon.png",
+          "imageWidth": 280,
           "resizeMode": "contain",
-          "backgroundColor": "#fff8d8",
+          "backgroundColor": "#FFF498",
           "dark": {
             "backgroundColor": "#000000"
           }

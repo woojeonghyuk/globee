@@ -6,6 +6,23 @@ export type ApplicationStatus =
   | 'no_show'
   | 'canceled';
 
+export type CompletedClassPhotoRow = {
+  id: string;
+  completed_class_id: string;
+  storage_path: string;
+  file_name: string;
+  sort_order: number;
+  created_at?: string;
+};
+
+export type CompletedClassRow = {
+  id: string;
+  completed_at: string;
+  diary: string;
+  teacher_comment: string;
+  completed_class_photos?: CompletedClassPhotoRow[] | null;
+};
+
 export type ApplicationRow = {
   id: string;
   parent_id: string;
@@ -27,31 +44,7 @@ export type ApplicationRow = {
     teacher_name: string;
     starts_at: string;
   } | null;
-  completed_classes:
-    | {
-        id: string;
-        completed_at: string;
-        diary: string;
-        teacher_comment: string;
-        completed_class_photos?: CompletedClassPhotoRow[] | null;
-      }
-    | {
-      id: string;
-      completed_at: string;
-      diary: string;
-      teacher_comment: string;
-      completed_class_photos?: CompletedClassPhotoRow[] | null;
-    }[]
-    | null;
-};
-
-export type CompletedClassPhotoRow = {
-  id: string;
-  completed_class_id: string;
-  storage_path: string;
-  file_name: string;
-  sort_order: number;
-  created_at?: string;
+  completed_classes: CompletedClassRow | CompletedClassRow[] | null;
 };
 
 export type AdminProfile = {

@@ -1,6 +1,9 @@
+import { useEffect, useState } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Tabs } from 'expo-router';
+import { router, Tabs } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { supabase } from '@/src/lib/supabase';
 import { colors } from '@/src/theme/colors';
 
 const tabIcons = {
@@ -36,6 +39,53 @@ function TabIcon({
 }
 
 export default function TabsLayout() {
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 12);
+  const [hasSession, setHasSession] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!isMounted) return;
+
+        if (!data.session) {
+          router.replace('/login');
+          return;
+        }
+
+        setHasSession(true);
+      })
+      .catch(() => {
+        if (isMounted) {
+          router.replace('/login');
+        }
+      });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!isMounted) return;
+
+      if (!session) {
+        setHasSession(false);
+        router.replace('/login');
+        return;
+      }
+
+      setHasSession(true);
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  if (!hasSession) return null;
+
   return (
     <Tabs
       screenOptions={{
@@ -48,9 +98,9 @@ export default function TabsLayout() {
           marginTop: 2,
         },
         tabBarStyle: {
-          height: 74,
+          height: 62 + bottomInset,
           paddingTop: 8,
-          paddingBottom: 12,
+          paddingBottom: bottomInset,
           backgroundColor: colors.white,
           borderTopColor: colors.line,
         },

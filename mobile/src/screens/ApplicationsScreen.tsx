@@ -149,7 +149,7 @@ export default function ApplicationsScreen() {
 
     Alert.alert(
       '신청을 취소할까요?',
-      `${selectedApplication.childName} 아이의 ${selectedClass.country} 문화 신청이 취소돼요.`,
+      `${selectedApplication.childName} 아이의 ${selectedClass.country} 문화교류 신청이 취소돼요.`,
       [
         { text: '아니요', style: 'cancel' },
         {

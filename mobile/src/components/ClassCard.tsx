@@ -45,7 +45,14 @@ export default function ClassCard({
     >
       <View style={[styles.visual, { backgroundColor: item.imageColor }]}>
         <Text style={styles.flag}>{item.flag}</Text>
-        <Text style={styles.visualText}>{item.country}</Text>
+        <Text
+          style={styles.visualText}
+          numberOfLines={2}
+          adjustsFontSizeToFit
+          minimumFontScale={0.82}
+        >
+          {item.country}
+        </Text>
       </View>
 
       <View style={styles.body}>
@@ -131,6 +138,8 @@ const styles = StyleSheet.create({
     color: colors.navy,
     fontSize: 13,
     fontWeight: '900',
+    lineHeight: 17,
+    textAlign: 'center',
   },
   body: {
     flex: 1,

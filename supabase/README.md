@@ -45,6 +45,8 @@ functions/  Supabase Edge Functions
 - `delete-account`: 학부모 계정 탈퇴 처리
 - `notify-new-application`: 새 신청을 카카오워크 운영진 방으로 알림
 
+`supabase/.env.example`은 Edge Function에 필요한 Secret 이름을 문서화하기 위한 예시 파일입니다. 실제 값은 Supabase Secrets에만 저장합니다.
+
 배포:
 
 ```bash
@@ -62,14 +64,20 @@ npx supabase functions deploy notify-new-application --project-ref emuvubzjxdfdo
 ```text
 supabase/sql/20260418_application_notifications.sql
 supabase/sql/20260418_harden_admin_delete_class.sql
-supabase/sql/20260418_close_class_on_first_finalized_application.sql
 supabase/sql/20260418_harden_finalization_workflow.sql
+supabase/sql/20260419_restore_conditional_class_closure.sql
 ```
+
+`20260418_close_class_on_first_finalized_application.sql`을 이미 실행한 DB는
+`20260419_restore_conditional_class_closure.sql`을 추가로 실행해
+active 신청이 남은 문화교류를 다시 열고, 이후에는 active 신청이 없을 때만
+문화교류가 닫히도록 되돌립니다.
 
 ## Security Notes
 
 - service role key는 Edge Function 환경변수로만 사용합니다.
 - 프론트엔드에는 service role key를 넣지 않습니다.
+- Edge Function은 `verify_jwt = false`로 배포하지만 함수 내부에서 `Authorization` 헤더와 `auth.getUser()`로 세션을 직접 검증한 뒤 service role client를 사용합니다.
 - 카카오워크 Webhook URL은 Supabase Secret에만 저장하고 코드에 직접 넣지 않습니다.
 - 새 SQL을 추가하면 Supabase SQL Editor에서 실행한 뒤 앱/관리자웹 주요 흐름을 다시 테스트합니다.
 - Storage 사진 파일은 private bucket에 저장하고, RLS로 해당 보호자와 운영진만 접근하게 합니다.

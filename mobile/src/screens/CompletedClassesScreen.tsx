@@ -5,10 +5,8 @@ import {
   Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
-  Platform,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -16,6 +14,8 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as FileSystem from 'expo-file-system/legacy';
+import * as MediaLibrary from 'expo-media-library';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import ScreenShell from '@/src/components/ScreenShell';
 import SectionHeader from '@/src/components/SectionHeader';
@@ -65,6 +65,7 @@ export default function CompletedClassesScreen() {
   const { completedRecords, refreshCompletedRecords } = useCompletedRecords();
   const { children } = useChildProfiles();
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
   const [selectedGallery, setSelectedGallery] = useState<SelectedGallery | null>(
     null,
@@ -144,24 +145,34 @@ export default function CompletedClassesScreen() {
         return;
       }
 
+      const isMediaLibraryAvailable = await MediaLibrary.isAvailableAsync();
+      if (!isMediaLibraryAvailable) {
+        Alert.alert('저장 실패', '이 기기에서는 갤러리 저장을 사용할 수 없어요.');
+        return;
+      }
+
+      const permission = await MediaLibrary.requestPermissionsAsync(true);
+      if (!permission.granted) {
+        Alert.alert(
+          '저장 권한 필요',
+          '사진을 갤러리에 저장하려면 사진 저장 권한이 필요해요.',
+        );
+        return;
+      }
+
       const fileName = getSafePhotoFileName(activePhoto.fileName);
       const downloadResult = await FileSystem.downloadAsync(
         activePhoto.uri,
         `${cacheDirectory}${Date.now()}-${fileName}`,
       );
 
-      const shareUrl =
-        Platform.OS === 'android'
-          ? await FileSystem.getContentUriAsync(downloadResult.uri)
-          : downloadResult.uri;
-
-      await Share.share({
-        title: 'Globee 완료문화 사진',
-        url: shareUrl,
-        message: Platform.OS === 'android' ? shareUrl : undefined,
-      });
+      await MediaLibrary.saveToLibraryAsync(downloadResult.uri);
+      Alert.alert('저장 완료', '사진이 갤러리에 저장되었어요.');
     } catch {
-      Alert.alert('저장 실패', '사진을 열지 못했어요. 잠시 후 다시 시도해주세요.');
+      Alert.alert(
+        '저장 실패',
+        '사진을 갤러리에 저장하지 못했어요. 잠시 후 다시 시도해주세요.',
+      );
     } finally {
       setIsSavingPhoto(false);
     }
@@ -310,7 +321,15 @@ export default function CompletedClassesScreen() {
         visible={selectedGallery !== null}
         onRequestClose={() => setSelectedGallery(null)}
       >
-        <View style={styles.modalBackdrop}>
+        <View
+          style={[
+            styles.modalBackdrop,
+            {
+              paddingBottom: Math.max(insets.bottom + 16, 28),
+              paddingTop: Math.max(insets.top + 16, 48),
+            },
+          ]}
+        >
           <View style={styles.modalHeader}>
             <View style={styles.modalTitleBlock}>
               <Text style={styles.modalCountry}>
@@ -358,6 +377,7 @@ export default function CompletedClassesScreen() {
           ) : null}
 
           <Pressable
+            disabled={isSavingPhoto}
             onPress={handleSavePhoto}
             style={({ pressed }) => [
               styles.saveButton,

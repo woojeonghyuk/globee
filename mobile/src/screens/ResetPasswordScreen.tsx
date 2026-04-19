@@ -8,9 +8,10 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import BrandWordmark from '@/src/components/BrandWordmark';
@@ -44,6 +45,8 @@ function formatOtpTime(seconds: number) {
 export default function ResetPasswordScreen() {
   useAuthScreenBackHandler();
 
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const [step, setStep] = useState<ResetStep>('phone');
   const [phone, setPhone] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
@@ -53,6 +56,11 @@ export default function ResetPasswordScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [otpRemainingSeconds, setOtpRemainingSeconds] = useState(0);
   const [resendRemainingSeconds, setResendRemainingSeconds] = useState(0);
+  const isWideAndroid = Platform.OS === 'android' && width >= 520;
+  const bottomPadding = Math.max(
+    insets.bottom + 28,
+    isWideAndroid ? 92 : 42,
+  );
 
   useEffect(() => {
     if (step !== 'code') return undefined;
@@ -267,7 +275,7 @@ export default function ResetPasswordScreen() {
         <ScrollView
           alwaysBounceVertical={false}
           bounces={false}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
           keyboardShouldPersistTaps="handled"
           overScrollMode="never"
           showsVerticalScrollIndicator={false}
@@ -380,6 +388,7 @@ export default function ResetPasswordScreen() {
             )}
 
             <Pressable
+              disabled={isSubmitting}
               style={({ pressed }) => [
                 styles.resetButton,
                 isSubmitting && styles.resetButtonDisabled,

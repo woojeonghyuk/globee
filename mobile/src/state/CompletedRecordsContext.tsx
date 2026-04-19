@@ -294,6 +294,7 @@ export function CompletedRecordsProvider({
       setCompletedRecords(records);
     } catch {
       setCompletedRecords([]);
+      setStampCountries([]);
     }
   }, []);
 
@@ -309,6 +310,7 @@ export function CompletedRecordsProvider({
 
       if (event === 'SIGNED_OUT') {
         setCompletedRecords([]);
+        setStampCountries([]);
       }
     });
 

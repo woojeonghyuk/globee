@@ -22,7 +22,10 @@ jobs:
         shell: bash
         run: |
           forbidden_files="$(
-            git ls-files | grep -E '(^|/)(node_modules|dist|build|\.vercel|\.eas|\.expo|\.temp)(/|$)|(^|/)\.env($|\.|/)' || true
+            git ls-files \
+              | grep -E '(^|/)(node_modules|dist|build|\.vercel|\.eas|\.expo|\.temp)(/|$)|(^|/)\.env($|\.|/)' \
+              | grep -vE '(^|/)\.env\.example$' \
+              || true
           )"
 
           if [ -n "$forbidden_files" ]; then

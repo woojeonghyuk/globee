@@ -44,7 +44,7 @@ const statusMap: Record<ApplicationRow['status'], ApplicationItem['status']> = {
   applied: '신청 확인중',
   waiting: '확정 대기',
   confirmed: '신청 완료',
-  completed: '수업 완료',
+  completed: '완료문화',
   no_show: '미참여',
   canceled: '신청 취소',
 };

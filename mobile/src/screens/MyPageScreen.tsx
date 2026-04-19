@@ -84,6 +84,7 @@ export default function MyPageScreen() {
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [errors, setErrors] = useState<FieldErrors>({});
+  const [isSavingChild, setIsSavingChild] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   const isEditMode = useMemo(() => selectedChildId !== null, [selectedChildId]);
@@ -194,6 +195,7 @@ export default function MyPageScreen() {
   };
 
   const handleSave = async () => {
+    if (isSavingChild) return;
     if (!validateForm()) return;
     Keyboard.dismiss();
 
@@ -207,6 +209,8 @@ export default function MyPageScreen() {
     };
 
     try {
+      setIsSavingChild(true);
+
       if (selectedChildId) {
         await updateChild(selectedChildId, payload);
       } else {
@@ -219,6 +223,8 @@ export default function MyPageScreen() {
         '저장 실패',
         '아이 정보를 저장하지 못했어요. 잠시 후 다시 시도해주세요.',
       );
+    } finally {
+      setIsSavingChild(false);
     }
   };
 
@@ -625,14 +631,29 @@ export default function MyPageScreen() {
 
               <View style={styles.modalFooter}>
                 {isEditMode ? (
-                  <Pressable style={styles.deleteButton} onPressIn={handleDelete}>
+                  <Pressable
+                    disabled={isSavingChild}
+                    style={styles.deleteButton}
+                    onPress={handleDelete}
+                  >
                     <Text style={styles.deleteButtonText}>삭제</Text>
                   </Pressable>
                 ) : null}
 
-                <Pressable style={styles.saveButton} onPressIn={handleSave}>
+                <Pressable
+                  disabled={isSavingChild}
+                  style={[
+                    styles.saveButton,
+                    isSavingChild && styles.saveButtonDisabled,
+                  ]}
+                  onPress={handleSave}
+                >
                   <Text style={styles.saveButtonText}>
-                    {isEditMode ? '수정 완료' : '등록하기'}
+                    {isSavingChild
+                      ? '저장 중'
+                      : isEditMode
+                        ? '수정 완료'
+                        : '등록하기'}
                   </Text>
                 </Pressable>
               </View>
@@ -945,6 +966,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.navy,
+  },
+  saveButtonDisabled: {
+    opacity: 0.58,
   },
   saveButtonText: {
     color: colors.white,

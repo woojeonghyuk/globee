@@ -166,6 +166,8 @@ export function ClassesProvider({ children }: ClassesProviderProps) {
       if (event === 'SIGNED_OUT') {
         setClasses([]);
         setClassCatalog([]);
+        setErrorMessage('');
+        setIsLoading(false);
       }
     });
 

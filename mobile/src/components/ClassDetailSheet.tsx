@@ -7,6 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ClassItem } from '@/src/data/classes';
 import { colors } from '@/src/theme/colors';
@@ -28,6 +29,8 @@ export default function ClassDetailSheet({
   children,
   action,
 }: ClassDetailSheetProps) {
+  const insets = useSafeAreaInsets();
+
   return (
     <Modal
       visible={visible}
@@ -37,7 +40,12 @@ export default function ClassDetailSheet({
     >
       <View style={styles.modalBackdrop}>
         {classItem ? (
-          <View style={styles.modalCard}>
+          <View
+            style={[
+              styles.modalCard,
+              { paddingBottom: Math.max(insets.bottom + 24, 28) },
+            ]}
+          >
             <View style={styles.modalTopRow}>
               <View
                 style={[

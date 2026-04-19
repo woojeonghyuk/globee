@@ -21,7 +21,8 @@ VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 ```
 
-service role key는 관리자웹에 넣지 않습니다.
+`admin-web/.env.example`은 필요한 키 이름만 보여주는 예시 파일입니다.
+service role key와 webhook URL은 관리자웹에 넣지 않습니다.
 
 ## Development
 
@@ -32,7 +33,17 @@ npm run dev
 
 `npm run dev`는 로컬 개발용 서버입니다. 운영진이 실제로 사용하는 주소는 Vercel에 배포된 admin URL입니다.
 
+## Checks
+
+일상적인 코드 검증:
+
+```bash
+npx.cmd tsc --noEmit
+```
+
 ## Build
+
+릴리즈 출력까지 확인해야 할 때만 빌드를 실행합니다.
 
 ```bash
 npm.cmd run build
@@ -49,3 +60,4 @@ GitHub에 push하면 Vercel 프로젝트가 자동으로 다시 배포됩니다.
 - 관리자 URL과 비밀번호는 팀 외부에 공유하지 않습니다.
 - 운영용 계정은 `profiles.role = admin`이어야 합니다.
 - 문화교류 취소와 삭제는 Supabase RPC로 처리되어 중간 실패로 인한 반쪽 상태를 줄입니다.
+- 문화교류 삭제는 테스트/오생성 데이터 정리용입니다. 진행 중인 신청이 있으면 먼저 취소하거나 완료/미참여로 정리한 뒤 삭제합니다.

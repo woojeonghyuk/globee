@@ -30,11 +30,22 @@ supabase/    SQL 마이그레이션, RLS 정책, Edge Functions
 ## Security Notes
 
 - Do not commit `.env`, `.env.local`, service role keys, or secret keys.
+- Use `.env.example` files only as key-name references. Never put real values in example files.
 - Mobile and admin web may only use Supabase URL and anon/publishable key.
 - Supabase service role key is used only inside Edge Functions through Supabase environment variables.
 - KakaoWork webhook URLs are stored only as Supabase Secrets.
 - Admin web session persistence is disabled, so operators must log in again after closing or refreshing the page.
 - Test OTP entries in Supabase Auth should stay empty before production release.
+
+## Environment Files
+
+```text
+mobile/.env.local      EXPO_PUBLIC_SUPABASE_URL, EXPO_PUBLIC_SUPABASE_ANON_KEY
+admin-web/.env.local   VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
+supabase secrets       SUPABASE_SERVICE_ROLE_KEY, KAKAOWORK_WEBHOOK_URL
+```
+
+Tracked `.env.example` files document the required key names only. Real values stay in local `.env.local`, EAS environment variables, Vercel environment variables, or Supabase Secrets.
 
 ## Common Checks
 
@@ -55,8 +66,17 @@ npm.cmd run lint
 
 ```bash
 cd admin-web
+npx.cmd tsc --noEmit
+```
+
+운영진 웹의 실제 릴리즈 출력까지 확인해야 할 때만 빌드를 실행합니다.
+
+```bash
+cd admin-web
 npm.cmd run build
 ```
+
+공개 웹사이트는 정적 HTML/CSS라 별도 빌드가 없습니다. 링크와 이미지 참조는 GitHub Actions에서 확인합니다.
 
 ## Launch Flow
 
@@ -72,5 +92,6 @@ npm.cmd run build
 - 운영진 웹과 공개 웹사이트는 GitHub `main`에 push하면 Vercel이 자동 배포합니다.
 - 모바일 앱은 Google Play에 올라가는 릴리즈이므로 자동 배포하지 않고, EAS production build를 수동으로 실행합니다.
 - 출시된 모바일 앱의 문구, 디자인, JavaScript 수정은 EAS Update의 `preview` 채널에서 먼저 확인한 뒤 `production` 채널로 배포합니다.
+- 앱 아이콘, 네이티브 스플래시, 권한, native library 변경은 OTA로 확인할 수 없으므로 새 APK/AAB 빌드가 필요합니다.
 - Supabase SQL과 Edge Functions는 자동 적용하지 않습니다. DB 변경은 SQL Editor에서 실행하고, 함수 변경은 Supabase CLI로 배포한 뒤 테스트합니다.
 - 새 기능을 넣을 때는 `mobile`, `admin-web`, `supabase`, `web` 중 영향을 받는 폴더의 README도 함께 갱신합니다.
