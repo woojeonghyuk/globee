@@ -133,11 +133,22 @@ export default function MyPageScreen() {
     });
   };
 
-  const getInterests = () =>
-    form.interestsText
+  const getInterests = () => {
+    const seenInterests = new Set<string>();
+
+    return form.interestsText
       .split(',')
       .map((item) => item.trim())
-      .filter(Boolean);
+      .filter((item) => {
+        if (!item) return false;
+
+        const key = item.toLowerCase();
+        if (seenInterests.has(key)) return false;
+
+        seenInterests.add(key);
+        return true;
+      });
+  };
 
   const validateForm = () => {
     const nextErrors: FieldErrors = {};
@@ -419,8 +430,8 @@ export default function MyPageScreen() {
               <Text style={styles.school}>{child.school}</Text>
 
               <View style={styles.interestRow}>
-                {child.interests.map((interest) => (
-                  <View key={`${child.id}-${interest}`} style={styles.interestChip}>
+                {child.interests.map((interest, index) => (
+                  <View key={`${child.id}-${interest}-${index}`} style={styles.interestChip}>
                     <Text style={styles.interestText}>{interest}</Text>
                   </View>
                 ))}

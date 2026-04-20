@@ -39,6 +39,19 @@ type ChildProfilesProviderProps = {
   children: ReactNode;
 };
 
+function uniqueChildProfiles(children: ChildProfile[]) {
+  const seenIds = new Set<string>();
+
+  return children.filter((child) => {
+    if (seenIds.has(child.id)) {
+      return false;
+    }
+
+    seenIds.add(child.id);
+    return true;
+  });
+}
+
 export function ChildProfilesProvider({ children }: ChildProfilesProviderProps) {
   const [profiles, setProfiles] = useState<ChildProfile[]>([]);
 
@@ -69,7 +82,7 @@ export function ChildProfilesProvider({ children }: ChildProfilesProviderProps) 
         .order('created_at', { ascending: true });
 
       if (!error && data) {
-        setProfiles((data as ChildRow[]).map(mapChildRow));
+        setProfiles(uniqueChildProfiles((data as ChildRow[]).map(mapChildRow)));
       }
     } catch {
       setProfiles([]);
@@ -127,7 +140,12 @@ export function ChildProfilesProvider({ children }: ChildProfilesProviderProps) 
 
         if (error) throw error;
 
-        setProfiles((prev) => [mapChildRow(data as ChildRow), ...prev]);
+        const nextChild = mapChildRow(data as ChildRow);
+
+        setProfiles((prev) => [
+          nextChild,
+          ...prev.filter((profile) => profile.id !== nextChild.id),
+        ]);
       },
       updateChild: async (id, child) => {
         const { data, error } = await supabase
