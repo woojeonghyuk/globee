@@ -23,7 +23,7 @@ supabase/    SQL 마이그레이션, RLS 정책, Edge Functions
 
 ## Important URLs
 
-- Public site: `https://globee-st.vercel.app/`
+- Public site: `https://globee.ai.kr/`
 - Admin web: `https://globee-admin.vercel.app/`
 - Supabase project: `https://emuvubzjxdfdonjrabaw.supabase.co`
 

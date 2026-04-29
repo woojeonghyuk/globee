@@ -12,10 +12,10 @@
 
 ## Current URLs
 
-- Home: `https://globee-st.vercel.app/`
-- Privacy Policy: `https://globee-st.vercel.app/privacy.html`
-- Terms: `https://globee-st.vercel.app/terms.html`
-- Account Deletion: `https://globee-st.vercel.app/delete-account.html`
+- Home: `https://globee.ai.kr/`
+- Privacy Policy: `https://globee.ai.kr/privacy.html`
+- Terms: `https://globee.ai.kr/terms.html`
+- Account Deletion: `https://globee.ai.kr/delete-account.html`
 
 ## Notes
 
