@@ -27,6 +27,7 @@ type ChildRow = {
 
 type ChildProfilesContextValue = {
   children: ChildProfile[];
+  isLoading: boolean;
   addChild: (child: ChildProfileInput) => Promise<void>;
   updateChild: (id: string, child: ChildProfileInput) => Promise<void>;
   deleteChild: (id: string) => Promise<void>;
@@ -54,6 +55,7 @@ function uniqueChildProfiles(children: ChildProfile[]) {
 
 export function ChildProfilesProvider({ children }: ChildProfilesProviderProps) {
   const [profiles, setProfiles] = useState<ChildProfile[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const mapChildRow = (row: ChildRow): ChildProfile => ({
     id: row.id,
@@ -66,6 +68,8 @@ export function ChildProfilesProvider({ children }: ChildProfilesProviderProps) 
   });
 
   const refreshChildren = useCallback(async () => {
+    setIsLoading(true);
+
     try {
       const {
         data: { user },
@@ -73,6 +77,7 @@ export function ChildProfilesProvider({ children }: ChildProfilesProviderProps) 
 
       if (!user) {
         setProfiles([]);
+        setIsLoading(false);
         return;
       }
 
@@ -86,6 +91,8 @@ export function ChildProfilesProvider({ children }: ChildProfilesProviderProps) 
       }
     } catch {
       setProfiles([]);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -101,6 +108,7 @@ export function ChildProfilesProvider({ children }: ChildProfilesProviderProps) 
 
       if (event === 'SIGNED_OUT') {
         setProfiles([]);
+        setIsLoading(false);
       }
     });
 
@@ -110,6 +118,7 @@ export function ChildProfilesProvider({ children }: ChildProfilesProviderProps) 
   const value = useMemo<ChildProfilesContextValue>(
     () => ({
       children: profiles,
+      isLoading,
       refreshChildren,
       addChild: async (child) => {
         const {
@@ -179,7 +188,7 @@ export function ChildProfilesProvider({ children }: ChildProfilesProviderProps) 
         setProfiles((prev) => prev.filter((profile) => profile.id !== id));
       },
     }),
-    [profiles, refreshChildren],
+    [isLoading, profiles, refreshChildren],
   );
 
   return (

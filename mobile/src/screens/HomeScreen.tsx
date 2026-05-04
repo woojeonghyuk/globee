@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  Modal,
   Pressable,
   StyleSheet,
   Text,
@@ -13,7 +14,12 @@ import ClassCard from '@/src/components/ClassCard';
 import ClassDetailSheet from '@/src/components/ClassDetailSheet';
 import ScreenShell from '@/src/components/ScreenShell';
 import { ClassItem, fixedCampusOptions } from '@/src/data/classes';
+import {
+  clearChildRegistrationGuidePending,
+  isChildRegistrationGuidePending,
+} from '@/src/lib/childRegistrationGuide';
 import { getApplicationErrorMessage } from '@/src/lib/authMessages';
+import { supabase } from '@/src/lib/supabase';
 import { useApplications } from '@/src/state/ApplicationsContext';
 import { useClasses } from '@/src/state/ClassesContext';
 import { useChildProfiles } from '@/src/state/ChildProfilesContext';
@@ -41,8 +47,8 @@ function getClassSortTime(classItem: ClassItem) {
 }
 
 export default function HomeScreen() {
-  const { children } = useChildProfiles();
-  const { classes, errorMessage, refreshClasses } = useClasses();
+  const { children, isLoading: isLoadingChildren } = useChildProfiles();
+  const { classes, errorMessage, isLoading, refreshClasses } = useClasses();
   const {
     addApplication,
     applications,
@@ -53,6 +59,8 @@ export default function HomeScreen() {
   const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
   const [selectedChildIds, setSelectedChildIds] = useState<string[]>([]);
   const [isApplying, setIsApplying] = useState(false);
+  const [showChildRegistrationGuide, setShowChildRegistrationGuide] =
+    useState(false);
 
   const hiddenCompletedClassIds = useMemo(
     () =>
@@ -89,6 +97,58 @@ export default function HomeScreen() {
       ).sort((first, second) => getClassSortTime(first) - getClassSortTime(second)),
     [selectedCampus, visibleClasses],
   );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function syncChildRegistrationGuide() {
+      if (isLoading || isLoadingChildren) {
+        return;
+      }
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!isMounted || !user) {
+        return;
+      }
+
+      if (children.length > 0 || visibleClasses.length > 0) {
+        await clearChildRegistrationGuidePending(user.id);
+
+        if (isMounted) {
+          setShowChildRegistrationGuide(false);
+        }
+        return;
+      }
+
+      if (errorMessage) {
+        if (isMounted) {
+          setShowChildRegistrationGuide(false);
+        }
+        return;
+      }
+
+      const shouldShowGuide = await isChildRegistrationGuidePending(user.id);
+
+      if (isMounted) {
+        setShowChildRegistrationGuide(shouldShowGuide);
+      }
+    }
+
+    void syncChildRegistrationGuide();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [
+    children.length,
+    errorMessage,
+    isLoading,
+    isLoadingChildren,
+    visibleClasses.length,
+  ]);
 
   useFocusEffect(
     useCallback(() => {
@@ -210,6 +270,26 @@ export default function HomeScreen() {
     closeClassDetail();
     router.push('/(tabs)/my');
   };
+
+  const dismissChildRegistrationGuide = useCallback(async () => {
+    setShowChildRegistrationGuide(false);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      await clearChildRegistrationGuidePending(user.id);
+    }
+  }, []);
+
+  const openChildRegistration = useCallback(async () => {
+    await dismissChildRegistrationGuide();
+    router.push({
+      pathname: '/(tabs)/my',
+      params: { openAddChild: '1' },
+    });
+  }, [dismissChildRegistrationGuide]);
 
   const handleApply = async () => {
     if (!selectedClass || isApplying) return;
@@ -353,6 +433,75 @@ export default function HomeScreen() {
 
   return (
     <ScreenShell>
+      <Modal
+        visible={showChildRegistrationGuide}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          void dismissChildRegistrationGuide();
+        }}
+      >
+        <View style={styles.guideOverlay}>
+          <View style={styles.guideCard}>
+            <View style={styles.guideBadge}>
+              <Text style={styles.guideBadgeText}>처음 시작하기</Text>
+            </View>
+
+            <Text style={styles.guideTitle}>
+              문화교류 신청 전에 아이 정보를 먼저 등록해 주세요
+            </Text>
+            <Text style={styles.guideText}>
+              아이를 등록해 두면 수업이 열렸을 때 바로 신청할 수 있어요.
+              {'\n'}마이페이지에서 아이 이름, 나이, 학교, 관심사를 먼저
+              적어볼까요?
+            </Text>
+
+            <View style={styles.guideList}>
+              <View style={styles.guideListRow}>
+                <View style={styles.guideDot} />
+                <Text style={styles.guideListText}>
+                  아이 정보는 나중에도 수정할 수 있어요.
+                </Text>
+              </View>
+              <View style={styles.guideListRow}>
+                <View style={styles.guideDot} />
+                <Text style={styles.guideListText}>
+                  수업이 열리면 홈에서 바로 신청할 수 있어요.
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.guideActions}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.guideSecondaryButton,
+                  pressed && styles.pressed,
+                ]}
+                onPress={() => {
+                  void dismissChildRegistrationGuide();
+                }}
+              >
+                <Text style={styles.guideSecondaryButtonText}>나중에 할게요</Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.guidePrimaryButton,
+                  pressed && styles.pressed,
+                ]}
+                onPress={() => {
+                  void openChildRegistration();
+                }}
+              >
+                <Text style={styles.guidePrimaryButtonText}>
+                  아이 등록하러 가기
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <View style={styles.header}>
         <Text style={styles.brand}>Globee</Text>
         <Text style={styles.title}>동네에서 떠나는 세계여행{'\n'}오늘 가볼 나라는 어디일까요?</Text>
@@ -519,6 +668,108 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  guideOverlay: {
+    flex: 1,
+    paddingHorizontal: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(20, 33, 61, 0.34)',
+  },
+  guideCard: {
+    width: '100%',
+    maxWidth: 420,
+    borderRadius: 28,
+    paddingHorizontal: 22,
+    paddingTop: 22,
+    paddingBottom: 18,
+    backgroundColor: colors.cardSolid,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.92)',
+    shadowColor: colors.navy,
+    shadowOpacity: 0.14,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 8,
+  },
+  guideBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    marginBottom: 14,
+    backgroundColor: colors.honey,
+  },
+  guideBadgeText: {
+    color: colors.navy,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  guideTitle: {
+    color: colors.navy,
+    fontSize: 23,
+    lineHeight: 31,
+    fontWeight: '900',
+    marginBottom: 10,
+  },
+  guideText: {
+    color: colors.navySoft,
+    fontSize: 14,
+    lineHeight: 22,
+    fontWeight: '700',
+  },
+  guideList: {
+    gap: 10,
+    marginTop: 18,
+    marginBottom: 20,
+  },
+  guideListRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  guideDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    marginTop: 6,
+    backgroundColor: colors.orange,
+  },
+  guideListText: {
+    flex: 1,
+    color: colors.navy,
+    fontSize: 14,
+    lineHeight: 21,
+    fontWeight: '700',
+  },
+  guideActions: {
+    gap: 10,
+  },
+  guideSecondaryButton: {
+    height: 50,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  guideSecondaryButtonText: {
+    color: colors.navySoft,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  guidePrimaryButton: {
+    height: 56,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.navy,
+  },
+  guidePrimaryButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '900',
+  },
   header: {
     marginBottom: 28,
   },

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Keyboard,
@@ -13,7 +13,7 @@ import {
   View,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 import ScreenShell from '@/src/components/ScreenShell';
 import { ChildProfile } from '@/src/data/classes';
@@ -72,6 +72,7 @@ function getDeleteAccountErrorMessage(error: unknown) {
 }
 
 export default function MyPageScreen() {
+  const params = useLocalSearchParams<{ openAddChild?: string | string[] }>();
   const {
     children,
     addChild,
@@ -88,6 +89,9 @@ export default function MyPageScreen() {
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   const isEditMode = useMemo(() => selectedChildId !== null, [selectedChildId]);
+  const openAddChildParam = Array.isArray(params.openAddChild)
+    ? params.openAddChild[0]
+    : params.openAddChild;
 
   const resetForm = () => {
     setSelectedChildId(null);
@@ -118,6 +122,18 @@ export default function MyPageScreen() {
     setModalVisible(false);
     resetForm();
   };
+
+  useEffect(() => {
+    if (openAddChildParam !== '1' || modalVisible) {
+      return;
+    }
+
+    setSelectedChildId(null);
+    setForm(emptyForm);
+    setErrors({});
+    setModalVisible(true);
+    router.setParams({ openAddChild: undefined });
+  }, [modalVisible, openAddChildParam]);
 
   const updateForm = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({

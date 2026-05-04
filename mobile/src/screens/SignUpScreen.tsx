@@ -15,6 +15,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router';
 
 import BrandWordmark from '@/src/components/BrandWordmark';
+import { markChildRegistrationGuidePending } from '@/src/lib/childRegistrationGuide';
 import {
   getOtpVerificationErrorMessage,
   getPasswordUpdateErrorMessage,
@@ -268,6 +269,7 @@ export default function SignUpScreen() {
     if (user) {
       try {
         await ensureParentProfile(user.id, pendingPhone || normalizeKoreanPhone(phone));
+        await markChildRegistrationGuidePending(user.id);
       } catch {
         setIsSubmitting(false);
         Alert.alert(
